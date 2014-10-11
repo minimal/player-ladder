@@ -4,16 +4,16 @@
                    [react-tutorial-om.utils :refer [logm]]
                    )
   (:require [goog.events :as events]
-            [cljs.core.async :refer [put! <! >! chan timeout]]
+            [cljs.core.async :as async :refer [put! <! >! chan timeout]]
             [om.core :as om :include-macros true]
             [om.dom :as dom :include-macros true]
             #_[secrtary.core :as secretary]
             [cljs-http.client :as http]
+            [figwheel.client :as fw :include-macros true]
+            [weasel.repl :as weasel]
             [react-tutorial-om.utils :refer [guid]])
   (:import [goog History]
            [goog.history EventType]))
-
-(enable-console-print!)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Util
@@ -25,7 +25,7 @@
 (defn- fetch-matches
   "The comments need to be a vector, not a list. Not sure why."
   [app opts]
-  (go (let [{{matches :matches} :body} (<! (http/get (:url opts)))]
+  (go (let [{{matches :matches} :body} (<! (http/get (:url opts) {:accept "application/transit+json"}))]
         (when matches
           (om/transact!
            app #(assoc % :matches matches))))))
@@ -34,7 +34,7 @@
   "The comments need to be a vector, not a list. Not sure why."
   [app opts]
   (go (let [{{:keys [rankings players]}
-             :body status :status} (<! (http/get (:url opts)))]
+             :body status :status} (<! (http/get (:url opts) {:accept "application/transit+json"}))]
         (if rankings
           (om/transact!
            app #(-> %
@@ -59,9 +59,11 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Components
 
-(def app-state
+(defonce app-state
   (atom {:matches [] :rankings [] :players [] :conn? true
          :player-view {:display false :player nil} }))
+
+(defonce re-render-ch (chan))
 
 (defn display [show]
   (if show
@@ -87,7 +89,7 @@
   [match app opts]
   (do (om/transact! app [:matches]
                   (fn [matches] (conj matches match)))
-      (go (let [res (<! (http/post (:url opts) {:json-params match}))]
+      (go (let [res (<! (http/post (:url opts) {:transit-params match}))]
             (prn (:message res))))))
 
 (defn validate-scores
@@ -153,12 +155,15 @@
   (reify
     om/IInitState
     (init-state [_]
-      (om/transact! app #(assoc % :matches [])))
+      {:mounted true})
     om/IWillMount
     (will-mount [_]
-      (go (while true
+      (go (while (om/get-state owner :mounted)
             (fetch-matches app opts)
             (<! (timeout (:poll-interval opts))))))
+    om/IWillUnmount
+    (will-unmount [_]
+      (om/set-state! owner :mounted false))
     om/IRender
     (render [_]
       (dom/div
@@ -247,23 +252,24 @@
 
 (defn rankings-box [app owner opts]
   (reify
+    om/IInitState
+    (init-state [_]
+      {:mounted true})
     om/IWillMount
     (will-mount [_]
       (prn "will mount")
-      (go (while true
+      (go (while (om/get-state owner :mounted)
             (fetch-rankings app opts)
             (<! (timeout (:poll-interval opts))))))
+    om/IWillUnmount
+    (will-unmount [_]
+      (om/set-state! owner :mounted false))
     om/IRender
     (render [_]
       (dom/div
        #js {:className "rankingsBox"}
        (dom/h3 nil "Rankings (played more than 2 games)")
-       (om/build ranking-list (:rankings app) {:opts opts})))
-    om/IShouldUpdate
-    (should-update [this next-props next-state]
-      (not= (:rankings next-props)
-            (:rankings app)))
-    ))
+       (om/build ranking-list (:rankings app) {:opts opts})))))
 
 (defn status-box [conn? owner]
   (reify
@@ -282,7 +288,7 @@
     (will-mount [_]
       (let [select-player-ch (om/get-state owner :select-player-ch)]
         (go (loop []
-              (let [player (<! select-player-ch)]
+              (when-let [player (<! select-player-ch)]
                 (om/transact!
                  app :player-view
                  #(-> %
@@ -291,8 +297,15 @@
                                 player)  ;; toggle same player
                            (assoc x :display (not (:display x)))
                            (assoc x :display true))))
-                      (assoc :player player))))
-              (recur)))))
+                      (assoc :player player)))
+                (recur))))
+        (go (loop []
+              (when (<! re-render-ch)
+                (om/refresh! owner)
+                (recur))))))
+    om/IWillUnmount
+    (will-unmount [_]
+      (async/close! (om/get-state owner :select-player-ch)))
     om/IRenderState
     (render-state [this {:keys [select-player-ch]}]
       (dom/div #js {:className "row results-row"}
@@ -320,3 +333,14 @@
 (om/root ladder-app
          app-state
          {:target (.getElementById js/document "content")})
+
+(def is-dev (.contains (.. js/document -body -classList) "is-dev"))
+
+(when is-dev
+  (enable-console-print!)
+  (fw/watch-and-reload
+   :websocket-url   "ws://localhost:3449/figwheel-ws"
+   :jsload-callback (fn []
+                      (print "reloaded")
+                      (put! re-render-ch true)))
+  (weasel/connect "ws://localhost:9001" :verbose true))

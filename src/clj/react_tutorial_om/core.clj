@@ -1,5 +1,6 @@
 (ns react-tutorial-om.core
   (:require [cheshire.core :as json]
+            [clojure.edn :as edn]
             [clojure.java.io :as io]
             [compojure.core :refer [GET POST defroutes]]
             [compojure.handler :as handler]
@@ -8,7 +9,24 @@
             [ring.util.response :as resp]
             [clj-time.core :as time]
             [clj-time.coerce :refer [from-date from-string]]
-            ))
+            [net.cgrand.enlive-html :refer [deftemplate set-attr prepend append html]]
+            ring.adapter.jetty
+            [com.stuartsierra.component :as component]
+            [prone.middleware :as prone]
+            [prone.debug :refer [debug]]
+            [ring.middleware.format :refer [wrap-restful-format]]
+            [ring.middleware.format-response :refer [wrap-restful-response]]))
+
+(def inject-devmode-html
+  (comp
+     (set-attr :class "is-dev")
+     (prepend (html [:script {:type "text/javascript" :src "/js/out/goog/base.js"}]))
+     (prepend (html [:script {:type "text/javascript" :src "/react/react.js"}]))
+     (append  (html [:script {:type "text/javascript"} "goog.require('react_tutorial_om.app')"]))))
+
+(deftemplate page (io/resource "public/index.html")
+  [is-dev?]
+  [:body] (if is-dev? inject-devmode-html identity))
 
 (defn recent? [date & [now]]
   (if (nil? date)
@@ -30,6 +48,10 @@
   {:status (or status 200)
    :headers {"Content-Type" "application/json"}
    :body (json/generate-string data)})
+
+(defn edn-response [data & [status]]
+  {:status (or status 200)
+   :body data})
 
 (defn load-json-file [file]
   (-> (slurp file)
@@ -132,51 +154,69 @@
         (map :away results)))
 
 (defn pdbug [x]
-  ;; (print "hello")
-  ;; (print (last (:matches (first x))))
-  ;; (print (first x))
-  ;; (print x)
-  ;; (print x)
+  (println x)
   #_(doseq [t x]
       (println (:team t)))
   (println (filter #(= (:team %) "jons") x))
   x)
 
-(defroutes app-routes
-  (GET "/" [] (resp/redirect "/index.html"))
-  (GET "/init" [] (init) "inited")
-  (GET "/matches" [] (json-response
-                       {:message "Here's the results!"
-                        :matches (take-last 20 @results)}))
-  (POST "/matches" req
-        (save-match! (-> (:body req)
-                         io/reader
-                         slurp
-                         (json/parse-string true))))
+(defn handle-rankings
+  [results]
+  {:message "Some rankings"
+   :players (unique-players results)
+   :rankings  (->> (calc-ranking-data results)
+                   (attach-player-matches results)
+                   attach-suggested-opponents
+                   attach-uniques
+                   (filter (fn [{matches :matches}]
+                             (recent? (:date (last matches)))))
+                   (filter (fn [{:keys [loses wins]}] (> (+ loses wins) 4)))
+                   ((fn [col] (if (> (count col) 5)
+                               (drop-last 2 col)
+                               col)))
+                   (map-indexed (fn [i m] (assoc m :rank (inc i)))))})
 
-  (GET "/rankings" []
-       (let [-results (map translate-keys @results)]
-         (json-response
-          {:message "Some rankings"
-           :players (unique-players -results)
-           :rankings  (->> (calc-ranking-data -results)
-                           (attach-player-matches -results)
-                           attach-suggested-opponents
-                           attach-uniques
-                           (filter (fn [{matches :matches}]
-                                     (recent? (:date (last matches)))))
-                           (filter (fn [{:keys [loses wins]}] (> (+ loses wins) 4)))
-                           (map-indexed (fn [i m] (assoc m :rank (inc i))))
-                           )})))
+(defn make-routes [is-dev?]
+  (compojure.core/routes
+   (route/resources "/")
+   (route/resources "/react" {:root "react"})
+   (GET "/" [] (apply str (page true)))
+   (GET "/init" [] (init) "inited")
+   (GET "/matches" []
+        (edn-response
+         {:message "Here's the results!"
+          :matches (take-last 20 @results)}))
+   (POST "/matches" req
+         (save-match! (:body-params req)))
+   (GET "/rankings" []
+        (edn-response
+         (handle-rankings (map translate-keys @results))))
+   (route/not-found "Page not found")))
 
-  (route/resources "/")
-  (route/not-found "Page not found"))
+(defn make-handler [is-dev?]
+  (-> (make-routes is-dev?)
+      wrap-restful-format
+      handler/api))
 
-(def app
-  (-> #'app-routes
-      (handler/api)))
+(defrecord WebServer [ring is-dev?]
+  component/Lifecycle
+  (start [component]
+    (init)
+    (let [app (cond-> (make-handler is-dev?)
+                      is-dev? (prone/wrap-exceptions
+                               {:app-namespaces ["react-tutorial-om"]}))]
+      (assoc component
+        :server
+        (ring.adapter.jetty/run-jetty app ring))))
+  (stop [component]
+    (when-let [server (:server component)]
+      (.stop server))
+    (assoc component :server nil)))
 
-;; (init)
+(defn new-webserver [config]
+  (map->WebServer config))
+
+
 (comment
   "
  TODO:

@@ -19,13 +19,22 @@ Clone submodule
 
     git submodule update --init
 
-Install submodule
+Install submodules
 
     cd checkouts/ranking-algorithms
     lein install
+
+    cd ../ring-middleware-format
+    lein install
+
     cd ../..
 
-Compile js
+Compile with figwheel with auto browser refresh:
+
+    lein figwheel
+
+
+Or with cljsbuild Compile js
 
     lein cljsbuild once dev
     # or for development
@@ -33,8 +42,8 @@ Compile js
 
 
 Run server
-
-    lein ring server
+    lein repl
+    (go)
 
 Point Browser to
 
