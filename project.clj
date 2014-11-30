@@ -21,10 +21,10 @@
                  [metosin/compojure-api "0.16.5" :exclude [ring-middleware-format
                                                            prismatic/schema]]
                  ;; CLJS
-                 [org.clojure/clojurescript "0.0-2322" #_"0.0-2356"]
+                 [org.clojure/clojurescript "0.0-2371"]
                  [org.clojure/core.async "0.1.267.0-0d7780-alpha"]
                  ;; [secretary "0.7.1"]
-                 [cljs-http "0.1.18"]
+                 [cljs-http "0.1.21"]
                  [om "0.7.3"]
                  [figwheel "0.1.4-SNAPSHOT"]
                  [com.cemerick/piggieback "0.1.3"]
