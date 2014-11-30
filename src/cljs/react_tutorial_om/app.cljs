@@ -343,4 +343,4 @@
    :jsload-callback (fn []
                       (print "reloaded")
                       (put! re-render-ch true)))
-  (weasel/connect "ws://localhost:9001" :verbose true))
+  (weasel/connect "ws://localhost:9001" :verbose true :print #{:repl :console}))
