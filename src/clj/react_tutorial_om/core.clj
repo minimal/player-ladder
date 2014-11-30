@@ -1,21 +1,27 @@
 (ns react-tutorial-om.core
   (:require [cheshire.core :as json]
+            [clj-time.coerce :refer [from-date from-string]]
+            [clj-time.core :as time]
             [clojure.edn :as edn]
             [clojure.java.io :as io]
+            [clojure.pprint :refer [pprint]]
+            [compojure.api.routes :refer [with-routes]]
+            [compojure.api.sweet :refer [GET* POST* swagger-ui swagger-docs swaggered context]]
             [compojure.core :refer [GET POST defroutes]]
             [compojure.handler :as handler]
             [compojure.route :as route]
-            [ranking-algorithms.core :as rank]
-            [ring.util.response :as resp]
-            [clj-time.core :as time]
-            [clj-time.coerce :refer [from-date from-string]]
-            [net.cgrand.enlive-html :refer [deftemplate set-attr prepend append html]]
-            ring.adapter.jetty
             [com.stuartsierra.component :as component]
-            [prone.middleware :as prone]
+            [net.cgrand.enlive-html :refer [deftemplate set-attr prepend append html]]
             [prone.debug :refer [debug]]
+            [prone.middleware :as prone]
+            [ranking-algorithms.core :as rank]
+            ring.adapter.jetty
             [ring.middleware.format :refer [wrap-restful-format]]
-            [ring.middleware.format-response :refer [wrap-restful-response]]))
+            [ring.middleware.format-response :refer [wrap-restful-response]]
+            [ring.util.http-response :refer [ok] :as http-resp]
+            [ring.util.response :as resp]
+            [schema.core :as s]
+            [slingshot.slingshot :refer [throw+ try+]]))
 
 (def inject-devmode-html
   (comp
@@ -42,25 +48,16 @@
 (def results (atom [{:winner "chris", :winner-score 10, :loser "losers", :loser-score 0}
                     {:winner "arsenal", :winner-score 3, :loser "chelsea", :loser-score 0}]))
 
-(def db-file "results.json")
+(def db-file "results.edn")
 
-(defn json-response [data & [status]]
-  {:status (or status 200)
-   :headers {"Content-Type" "application/json"}
-   :body (json/generate-string data)})
-
-(defn edn-response [data & [status]]
-  {:status (or status 200)
-   :body data})
-
-(defn load-json-file [file]
+(defn load-edn-file [file]
   (-> (slurp file)
-      (json/parse-string true)
+      (edn/read-string)
       vec))
 
 (defn init
   []
-  (reset! results (load-json-file db-file)))
+  (reset! results (load-edn-file db-file)))
 
 (defn save-match! ;; TODO: write to a db
   [match]
@@ -70,9 +67,8 @@
                     (update-in [:loser] clojure.string/lower-case)
                     (assoc :date (java.util.Date.)))]
     (swap! results conj comment)
-    (spit db-file (json/generate-string @results)) ;; put in channel?
-    (json-response
-     {:message "Saved comment!"})))
+    (spit db-file (with-out-str (pprint @results))) ;; put in channel?
+    {:message "Saved comment!"}))
 
 (defn translate-keys [{:keys [winner winner-score loser loser-score date]}]
   {:home winner
@@ -101,7 +97,7 @@
   (for [idx idxs]
     (cond
      (neg? idx) (- offset idx)
-     (>= (inc idx) total) (- (dec idx) offset offset)
+     (> (inc idx) total) (- (dec idx) offset offset)
      :else idx)))
 
 (defn suggest-opponent
@@ -125,10 +121,7 @@
                               matchfreqs)
           sorted-totals (sort-by second near-totals)
           ]
-       (ffirst sorted-totals))
-    (catch java.lang.IndexOutOfBoundsException e
-      (prn "Index error: " rank (str e))
-      (str e))))
+       (ffirst sorted-totals))))
 
 (defn- vectorise-names [rankings]
   (vec (map :team rankings)))
@@ -160,6 +153,40 @@
   (println (filter #(= (:team %) "jons") x))
   x)
 
+(s/defschema Nat
+  (s/both s/Int
+          (s/pred #(not (neg? %)) "Zero or more")))
+
+(s/defschema Result
+  "Result is a map of winner/loser names and scores"
+  (s/both {:winner s/Str
+           :loser s/Str
+           :winner-score Nat
+           :loser-score Nat}
+          (s/pred (fn [{:keys [winner-score loser-score]}]
+                    (> winner-score loser-score))
+                  "Winner scores more than loser")))
+
+(s/defschema Match
+  {:opposition s/Str
+   :for Nat
+   :against Nat
+   :round (s/maybe s/Int)
+   :date java.util.Date})
+
+(s/defschema Ranking
+  {(s/optional-key :rd) (s/maybe s/Int)
+   :rank Nat,
+   :matches [Match]
+   (s/optional-key :round) (s/maybe s/Int)
+   :team s/Str
+   :suggest s/Str
+   :u-wins Nat
+   :ranking s/Num
+   :draw Nat
+   :loses Nat
+   :wins Nat})
+
 (defn handle-rankings
   [results]
   {:message "Some rankings"
@@ -177,26 +204,54 @@
                    (map-indexed (fn [i m] (assoc m :rank (inc i)))))})
 
 (defn make-routes [is-dev?]
-  (compojure.core/routes
-   (route/resources "/")
-   (route/resources "/react" {:root "react"})
-   (GET "/" [] (apply str (page true)))
-   (GET "/init" [] (init) "inited")
-   (GET "/matches" []
-        (edn-response
-         {:message "Here's the results!"
-          :matches (take-last 20 @results)}))
-   (POST "/matches" req
-         (save-match! (:body-params req)))
-   (GET "/rankings" []
-        (edn-response
-         (handle-rankings (map translate-keys @results))))
-   (route/not-found "Page not found")))
+  (with-routes
+    (route/resources "/")
+    (route/resources "/react" {:root "react"})
+    (swagger-ui :swagger-docs "/api/docs")
+    (swagger-docs "/api/docs")
+    (GET "/app" [] (apply str (page true)))
+    (GET "/init" [] (init) "inited")
+    (swaggered
+     "matches"
+     :description "Matches"
+     (context
+      "/matches" []
+      (GET* "/" []
+            :return {:message s/Str
+                     :matches [{s/Keyword s/Any}]}
+            :summary "all the matches"
+            (ok
+             {:message "Here's the results!"
+              :matches (take-last 20 @results)}))
+      (POST* "/" req
+             :body [result Result]
+             (ok (save-match! result)))))
+    (swaggered
+     "rankings"
+     :description "Rankings"
+     (context
+      "/rankings" []
+      (GET* "/" []
+            :return {:message s/Str
+                     :players #{s/Str}
+                     :rankings [Ranking]}
+            (ok
+             (handle-rankings (map translate-keys @results))))))
+    (route/not-found "Page not found")))
+
+(defn wrap-schema-errors [handler]
+  (fn [req]
+    (try+
+     (handler req)
+     (catch [:type :ring.swagger.schema/validation] {:keys [error] :as all}
+       (println all)
+       (http-resp/bad-request {:error error})))))
 
 (defn make-handler [is-dev?]
   (-> (make-routes is-dev?)
-      wrap-restful-format
-      handler/api))
+      compojure.api.middleware/api-middleware
+      (wrap-restful-format :formats  [:json :transit-json])
+      ))
 
 (defrecord WebServer [ring is-dev?]
   component/Lifecycle

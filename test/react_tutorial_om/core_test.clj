@@ -5,6 +5,7 @@
 
 (deftest suggesting
   (testing "Normalise indexes"
+    (is (= '(3 4 0 1) (normalise-indexes 5 2 [3 4 0 1])))
     (is (= '(4 3 1 2) (normalise-indexes 10 2 [-2 -1 1 2])))
     (is (= '(7 8 5 6) (normalise-indexes 10 2 [7 8 10 11])))))
 
