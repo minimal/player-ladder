@@ -1,0 +1,20 @@
+# get matches
+
+GET http://localhost:3000/matches
+
+# get matches transit
+GET http://localhost:3000/matches
+Accept: application/transit+json
+
+# post match result
+
+POST http://localhost:3000/matches
+Content-Type: application/json
+
+{"winner": "chris", "winner-score": 1,
+ "loser": "rob", "loser-score": 0}
+
+
+# get rankings
+
+GET http://localhost:3000/rankings
