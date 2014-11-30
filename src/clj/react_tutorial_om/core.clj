@@ -106,7 +106,7 @@
   (for [idx idxs]
     (cond
      (neg? idx) (- offset idx)
-     (>= (inc idx) total) (- (dec idx) offset offset)
+     (> (inc idx) total) (- (dec idx) offset offset)
      :else idx)))
 
 (defn suggest-opponent
@@ -130,10 +130,7 @@
                               matchfreqs)
           sorted-totals (sort-by second near-totals)
           ]
-       (ffirst sorted-totals))
-    (catch java.lang.IndexOutOfBoundsException e
-      (prn "Index error: " rank (str e))
-      (str e))))
+       (ffirst sorted-totals))))
 
 (defn- vectorise-names [rankings]
   (vec (map :team rankings)))
