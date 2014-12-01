@@ -7,3 +7,4 @@ before_install:
   - cd ../ring-middleware-format
   - lein install
   - cd ../..
+  - lein cljsbuild once
