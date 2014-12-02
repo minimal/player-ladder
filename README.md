@@ -1,7 +1,7 @@
 player-ladder-om
 =================
 
-[![Dependencies Status](http://jarkeeper.com/minimal/player-ladder/status.png)](http://jarkeeper.com/minimal/player-ladder)
+[![Dependencies Status](http://jarkeeper.com/minimal/player-ladder/status.svg)](http://jarkeeper.com/minimal/player-ladder)
 
 A player ladder for any 1v1 game (e.g. table tennis).
 
