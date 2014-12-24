@@ -1,25 +1,23 @@
 (ns react-tutorial-om.core
-  (:require [cheshire.core :as json]
-            [clj-time.coerce :refer [from-date from-string]]
+  (:require [clj-time.coerce :refer [from-date from-string]]
             [clj-time.core :as time]
             [clojure.edn :as edn]
             [clojure.java.io :as io]
             [clojure.pprint :refer [pprint]]
-            [compojure.api.routes :refer [with-routes]]
-            [compojure.api.sweet :refer [GET* POST* swagger-ui swagger-docs swaggered context]]
-            [compojure.core :refer [GET POST defroutes]]
-            [compojure.handler :as handler]
-            [compojure.route :as route]
             [com.stuartsierra.component :as component]
-            [net.cgrand.enlive-html :refer [deftemplate set-attr prepend append html]]
+            [compojure.api.routes :refer [with-routes]]
+            [compojure.api.sweet
+             :refer
+             [GET* POST* context swagger-docs swagger-ui swaggered]]
+            [compojure.core :refer [GET]]
+            [compojure.route :as route]
+            [net.cgrand.enlive-html :refer [append deftemplate html prepend set-attr]]
             [prone.debug :refer [debug]]
             [prone.middleware :as prone]
             [ranking-algorithms.core :as rank]
             ring.adapter.jetty
             [ring.middleware.format :refer [wrap-restful-format]]
-            [ring.middleware.format-response :refer [wrap-restful-response]]
-            [ring.util.http-response :refer [ok] :as http-resp]
-            [ring.util.response :as resp]
+            [ring.util.http-response :as http-resp :refer [ok]]
             [schema.core :as s]
             [slingshot.slingshot :refer [throw+ try+]]))
 
@@ -45,8 +43,7 @@
         (time/after? joda-date
                      (time/minus now offset))))))
 
-(def results (atom [{:winner "chris", :winner-score 10, :loser "losers", :loser-score 0}
-                    {:winner "arsenal", :winner-score 3, :loser "chelsea", :loser-score 0}]))
+(defonce results (atom []))
 
 (def db-file "results.edn")
 
@@ -187,6 +184,11 @@
    :loses Nat
    :wins Nat})
 
+(s/defschema RankingsResponse
+  {:message s/Str
+   :players #{s/Str}
+   :rankings [Ranking]})
+
 (defn handle-rankings
   [results]
   {:message "Some rankings"
@@ -232,9 +234,7 @@
      (context
       "/rankings" []
       (GET* "/" []
-            :return {:message s/Str
-                     :players #{s/Str}
-                     :rankings [Ranking]}
+            :return RankingsResponse
             (ok
              (handle-rankings (map translate-keys @results))))))
     (route/not-found "Page not found")))
