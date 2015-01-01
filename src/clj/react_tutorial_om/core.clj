@@ -28,6 +28,62 @@
      (prepend (html [:script {:type "text/javascript" :src "/react/react.js"}]))
      (append  (html [:script {:type "text/javascript"} "goog.require('react_tutorial_om.app')"]))))
 
+(def test-leagues
+  {:a {:rankings [{:draw 0,
+                   :loses 0,
+                   :matches [{:against 0,
+                              :date #inst "2014-11-30T19:25:16.876-00:00",
+                              :for 1,
+                              :opposition "rob",
+                              :round nil}
+                             {:against 0,
+                              :date #inst "2014-11-30T19:25:50.497-00:00",
+                              :for 1,
+                              :opposition "rob",
+                              :round nil}
+                             {:against 0,
+                              :date #inst "2014-11-30T23:58:00.584-00:00",
+                              :for 1,
+                              :opposition "rob",
+                              :round nil}
+                             {:against 0,
+                              :date #inst "2014-12-10T20:36:01.521-00:00",
+                              :for 1,
+                              :opposition "rob",
+                              :round nil}],
+                   :rank 1,
+                   :points 12
+                   :rd nil,
+                   :round nil,
+                   :team "chris",
+                   :wins 4}
+                  {:draw 0,
+                   :loses 0,
+                   :matches [{:against 1,
+                              :date #inst "2014-11-30T23:09:52.941-00:00",
+                              :for 2,
+                              :opposition "moo",
+                              :round nil}],
+                   :rank 2,
+                   :points 3
+                   :rd nil,
+                   :round nil,
+                   :team "blah",
+                   :wins 1}]}
+   :b {:rankings [{:draw 0,
+                   :loses 0,
+                   :matches [{:against 1,
+                              :date #inst "2014-11-30T23:09:52.941-00:00",
+                              :for 2,
+                              :opposition "moo",
+                              :round nil}],
+                   :rank 2,
+                   :points 3
+                   :rd nil,
+                   :round nil,
+                   :team "blah",
+                   :wins 1}]}})
+
 (deftemplate page (io/resource "public/index.html")
   [is-dev?]
   [:body] (if is-dev? inject-devmode-html identity))
@@ -186,8 +242,22 @@
 
 (s/defschema RankingsResponse
   {:message s/Str
-   :players #{s/Str}
+   :players (s/either [] #{s/Str})
    :rankings [Ranking]})
+
+(s/defschema LeagueRanking
+  {(s/optional-key :rd) (s/maybe s/Int)
+   :rank Nat,
+   :matches [Match]
+   (s/optional-key :round) (s/maybe s/Int)
+   :team s/Str
+   :draw Nat
+   :loses Nat
+   :wins Nat
+   :points Nat})
+
+(s/defschema LeaguesResponce
+  {:leagues {s/Keyword {:rankings [LeagueRanking]}}})
 
 (defn handle-rankings
   [results]
@@ -237,6 +307,16 @@
             :return RankingsResponse
             (ok
              (handle-rankings (map translate-keys @results))))))
+    (swaggered
+     "leagues"
+     :description "Leagues"
+     (context
+      "/leagues" []
+      (GET* "/" []
+            :return LeaguesResponce
+            (ok
+             {:leagues test-leagues} ;(handle-rankings (map translate-keys @results))
+             ))))
     (route/not-found "Page not found")))
 
 (defn wrap-schema-errors [handler]
@@ -247,23 +327,43 @@
        (println all)
        (http-resp/bad-request {:error error})))))
 
+(defn log-request-middleware [handler]
+  (fn [request]
+                                        ;(puget.printer/pprint request)
+    (let [res (handler request)]
+      #_(println res)
+      res)))
+
 (defn make-handler [is-dev?]
   (-> (make-routes is-dev?)
-      compojure.api.middleware/api-middleware
-      (wrap-restful-format :formats  [:json :transit-json])
-      ))
+    ;; log-request-middleware
+
+    (cond-> is-dev? (prone/wrap-exceptions
+                     {:app-namespaces ["react-tutorial-om"]
+                      :skip-prone? (fn [{:keys [headers]}]
+                                     (println headers)
+                                     (contains? headers "postman-token"))}))
+    compojure.api.middleware/api-middleware
+    (wrap-restful-format :formats  [:json :transit-json])
+
+    ;; wrap-schema-errors
+    ;; ring.swagger.middleware/catch-validation-errors
+    ;; ring.middleware.http-response/catch-response
+    ))
 
 (defrecord WebServer [ring is-dev?]
   component/Lifecycle
   (start [component]
     (init)
-    (let [app (cond-> (make-handler is-dev?)
-                      is-dev? (prone/wrap-exceptions
-                               {:app-namespaces ["react-tutorial-om"]}))]
+    (let [app (make-handler is-dev?)]
+      #_(when is-dev?
+          (inspect/start))
       (assoc component
         :server
         (ring.adapter.jetty/run-jetty app ring))))
   (stop [component]
+    #_(when is-dev?
+        (inspect/stop))
     (when-let [server (:server component)]
       (.stop server))
     (assoc component :server nil)))

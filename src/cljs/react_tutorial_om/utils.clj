@@ -1,12 +1,11 @@
-(ns react-tutorial-om.utils
-  )
+(ns react-tutorial-om.utils)
 
 (defmacro logm
   "Log as a macro to give the caller's line number in web console"
   ([s]
-     `(.log js/console (print-str ~s)))
+   `(.log js/console (print-str ~s)))
   ([s & rest]
-     `(.log js/console (print-str (cons ~s ~rest)))))
+   `(.log js/console (print-str (list ~s ~@rest)))))
 
 (defmacro make-table-cols
   "Build a table row with collumns "
