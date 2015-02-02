@@ -292,10 +292,10 @@
   (om/component
    (dom/table #js {:className "rankingTable"}
               (dom/thead nil
-                          (apply dom/tr nil
-                                 (map #(dom/th nil %)
-                                      ["" "team" "ranking" "w" "l" "w/l"
-                                       "suggested opponent" "last 10 games"])))
+                         (apply dom/tr nil
+                                (map #(dom/th nil %)
+                                     ["" "team" "ranking" "w" "l" "w/l"
+                                      "suggested opponent" "last 10 games"])))
               (apply
                dom/tbody nil
                (om/build-all
@@ -340,19 +340,21 @@
             (tdom/td points)
             (tdom/td nil (om/build last-10-games matches)))))
 
-(defcomponent league-list [rankings owner opts]
+(defcomponent league-list [league owner opts]
   (init-state
    [_]
    {:mounted false})
   (render
    [_]
-   (logm rankings)
-    (tdom/table {:class-name "rankingTable"}
-                (tdom/thead
-                 (for [header ["" "" "Wins" "Losses" "Played" "Points" "Last 10 Games"]]
-                   (tdom/th header)))
-                (tdom/tbody
-                 (om/build-all league-row (-> rankings :rankings)))))
+   (logm league)
+   (tdom/div nil
+             (tdom/table {:class-name "rankingTable"}
+                         (tdom/thead
+                          (for [header ["" "" "Wins" "Losses" "Played" "Points" "Last 10 Games"]]
+                            (tdom/th header)))
+                         (tdom/tbody
+                          (om/build-all league-row (-> league :rankings))))
+             (om/build comment-form league {:opts {:url "/nowhere"}})))
   )
 
 (defn status-box [conn? owner]
