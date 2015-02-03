@@ -17,7 +17,7 @@
             [weasel.repl :as weasel]
             [clairvoyant.core :as trace :include-macros true]
             [clojure.string :as str]
-            [omdev.core :as omdev]
+            ;; [omdev.core :as omdev]
             [react-tutorial-om.utils :refer [guid]])
   (:import [goog History]))
 
