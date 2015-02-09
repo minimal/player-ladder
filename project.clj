@@ -16,7 +16,7 @@
                  [org.clojure/core.async "0.1.346.0-17112a-alpha"]
                  [org.clojure/tools.reader "0.8.13"]
                  [prismatic/om-tools "0.3.10"]
-                 [prismatic/schema "0.3.6"]
+                 [prismatic/schema "0.3.7"]
                  [prone "0.8.0"]
                  [ranking-algorithms "0.1.0-SNAPSHOT"]
                  [ring "1.3.2"]
@@ -35,8 +35,8 @@
          :init    react-tutorial-om.core/init}
 
   :repl-options {:init-ns user}
-  :main react-tutorial-om.core
-  ;; :aot [react-tutorial-om.core]
+  :main react-tutorial-om.system
+  :aot [react-tutorial-om.system]
   :source-paths ["src/clj" "src/cljs" "target/classes"]
   ;; :jvm-opts ["-agentlib:jdwp=transport=dt_socket,server=y,suspend=n"]
 
