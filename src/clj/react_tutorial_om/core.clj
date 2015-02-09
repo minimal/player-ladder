@@ -25,7 +25,7 @@
   (comp
      (set-attr :class "is-dev")
      (prepend (html [:script {:type "text/javascript" :src "/js/out/goog/base.js"}]))
-     (prepend (html [:script {:type "text/javascript" :src "/react/react.js"}]))
+     ;; (prepend (html [:script {:type "text/javascript" :src "/react/react.js"}]))
      (append  (html [:script {:type "text/javascript"} "goog.require('react_tutorial_om.app')"]))))
 
 (def test-leagues
@@ -174,7 +174,10 @@
                               matchfreqs)
           sorted-totals (sort-by second near-totals)
           ]
-       (ffirst sorted-totals))))
+      (ffirst sorted-totals))
+    (catch IndexOutOfBoundsException e
+      (println "Error in suggest oponent" e)
+      "")))
 
 (defn- vectorise-names [rankings]
   (vec (map :team rankings)))
@@ -267,9 +270,9 @@
                    (attach-player-matches results)
                    attach-suggested-opponents
                    attach-uniques
-                   (filter (fn [{matches :matches}]
-                             (recent? (:date (last matches)))))
-                   (filter (fn [{:keys [loses wins]}] (> (+ loses wins) 4)))
+                   #_(filter (fn [{matches :matches}]
+                               (recent? (:date (last matches)))))
+                   #_(filter (fn [{:keys [loses wins]}] (> (+ loses wins) 4)))
                    ((fn [col] (if (> (count col) 5)
                                (drop-last 2 col)
                                col)))

@@ -35,8 +35,7 @@
          :init    react-tutorial-om.core/init}
 
   :repl-options {:init-ns user}
-  :main react-tutorial-om.system
-  :aot [react-tutorial-om.system]
+
   :source-paths ["src/clj" "src/cljs" "target/classes"]
   ;; :jvm-opts ["-agentlib:jdwp=transport=dt_socket,server=y,suspend=n"]
 
@@ -53,7 +52,10 @@
 
              :figwheel {:http-server-root "public" ;; resources/public
                         :port 3449
-                        :css-dirs ["resources/public/css"]}}
+                        :css-dirs ["resources/public/css"]}
+
+             :uberjar {:aot [react-tutorial-om.system]
+                       :main react-tutorial-om.system}}
 
   :cljsbuild {:test-commands {"node" ["node" :node-runner "resources/public/js/app.js"]}
               :builds [{:id "dev"

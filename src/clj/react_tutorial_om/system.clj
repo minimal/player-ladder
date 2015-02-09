@@ -1,7 +1,8 @@
 (ns react-tutorial-om.system
   (:require [react-tutorial-om.core :as core]
             [com.stuartsierra.component :as component])
-  (:gen-class))
+  ;; (:gen-class)
+  )
 
 (defn make-system [is-dev?]
   (component/system-map
