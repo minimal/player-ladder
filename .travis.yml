@@ -4,7 +4,5 @@ before_install:
 #   - git submodule update checkouts/ranking-algorithms
   - cd checkouts/ranking-algorithms
   - lein install
-  - cd ../ring-middleware-format
-  - lein install
   - cd ../..
   - lein cljsbuild once
