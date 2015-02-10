@@ -119,7 +119,7 @@
                     (update-in [:winner] clojure.string/lower-case)
                     (update-in [:loser] clojure.string/lower-case)
                     (assoc :date (java.util.Date.)))]
-    (swap! results conj comment)
+    (swap! results update-in [:singles-ladder] conj comment)
     (spit db-file (with-out-str (pprint @results))) ;; put in channel?
     {:message "Saved comment!"}))
 
@@ -297,7 +297,7 @@
             :summary "all the matches"
             (ok
              {:message "Here's the results!"
-              :matches (take-last 20 @results)}))
+              :matches (take-last 20 (:singles-ladder @results))}))
       (POST* "/" req
              :body [result Result]
              (ok (save-match! result)))))
@@ -309,7 +309,7 @@
       (GET* "/" []
             :return RankingsResponse
             (ok
-             (handle-rankings (map translate-keys @results))))))
+             (handle-rankings (map translate-keys (:singles-ladder @results)))))))
     (swaggered
      "leagues"
      :description "Leagues"
