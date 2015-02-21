@@ -105,8 +105,7 @@
 
 (defn load-edn-file [file]
   (-> (slurp file)
-      (edn/read-string)
-      vec))
+      (edn/read-string)))
 
 (defn init
   []
