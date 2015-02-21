@@ -1,5 +1,6 @@
 (ns react-tutorial-om.core-test
   (:require [react-tutorial-om.core :refer :all]
+            [react-tutorial-om.schemas :as sch]
             [clojure.test :refer :all]
             [ring.mock.request :refer :all]
             [schema.core :as s]
@@ -48,4 +49,4 @@
                    app)
         body (slurp-transit-body response)]
     (is (= (:status response) 200))
-    (is (nil? (s/check RankingsResponse body)))))
+    (is (nil? (s/check sch/RankingsResponse body)))))

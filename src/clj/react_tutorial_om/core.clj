@@ -4,17 +4,18 @@
             [clojure.edn :as edn]
             [clojure.java.io :as io]
             [clojure.pprint :refer [pprint]]
-            [com.stuartsierra.component :as component]
             [compojure.api.routes :refer [with-routes]]
             [compojure.api.sweet
              :refer
              [GET* POST* context swagger-docs swagger-ui swaggered]]
             [compojure.core :refer [GET]]
             [compojure.route :as route]
+            [com.stuartsierra.component :as component]
             [net.cgrand.enlive-html :refer [append deftemplate html prepend set-attr]]
             [prone.debug :refer [debug]]
             [prone.middleware :as prone]
             [ranking-algorithms.core :as rank]
+            [react-tutorial-om.schemas :as sch]
             ring.adapter.jetty
             [ring.middleware.format :refer [wrap-restful-format]]
             [ring.util.http-response :as http-resp :refer [ok]]
@@ -208,58 +209,7 @@
   (println (filter #(= (:team %) "jons") x))
   x)
 
-(s/defschema Nat
-  (s/both s/Int
-          (s/pred #(not (neg? %)) "Zero or more")))
 
-(s/defschema Result
-  "Result is a map of winner/loser names and scores"
-  (s/both {:winner s/Str
-           :loser s/Str
-           :winner-score Nat
-           :loser-score Nat}
-          (s/pred (fn [{:keys [winner-score loser-score]}]
-                    (> winner-score loser-score))
-                  "Winner scores more than loser")))
-
-(s/defschema Match
-  {:opposition s/Str
-   :for Nat
-   :against Nat
-   :round (s/maybe s/Int)
-   :date java.util.Date})
-
-(s/defschema Ranking
-  {(s/optional-key :rd) (s/maybe s/Int)
-   :rank Nat,
-   :matches [Match]
-   (s/optional-key :round) (s/maybe s/Int)
-   :team s/Str
-   :suggest s/Str
-   :u-wins Nat
-   :ranking s/Num
-   :draw Nat
-   :loses Nat
-   :wins Nat})
-
-(s/defschema RankingsResponse
-  {:message s/Str
-   :players (s/either [] #{s/Str})
-   :rankings [Ranking]})
-
-(s/defschema LeagueRanking
-  {(s/optional-key :rd) (s/maybe s/Int)
-   :rank Nat,
-   :matches [Match]
-   (s/optional-key :round) (s/maybe s/Int)
-   :team s/Str
-   :draw Nat
-   :loses Nat
-   :wins Nat
-   :points Nat})
-
-(s/defschema LeaguesResponce
-  {:leagues {s/Keyword {:rankings [LeagueRanking]}}})
 
 (defn handle-rankings
   [results]
@@ -298,7 +248,7 @@
              {:message "Here's the results!"
               :matches (take-last 20 (:singles-ladder @results))}))
       (POST* "/" req
-             :body [result Result]
+             :body [result sch/Result]
              (ok (save-match! result)))))
     (swaggered
      "rankings"
@@ -306,7 +256,7 @@
      (context
       "/rankings" []
       (GET* "/" []
-            :return RankingsResponse
+            :return sch/RankingsResponse
             (ok
              (handle-rankings (map translate-keys (:singles-ladder @results)))))))
     (swaggered
@@ -315,7 +265,7 @@
      (context
       "/leagues" []
       (GET* "/" []
-            :return LeaguesResponce
+            :return sch/LeaguesResponce
             (ok
              {:leagues test-leagues} ;(handle-rankings (map translate-keys @results))
              ))))
