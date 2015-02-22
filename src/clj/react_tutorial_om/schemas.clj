@@ -51,6 +51,8 @@
    :draw Nat
    :loses Nat
    :wins Nat
+   :for Nat
+   :against Nat
    :points Nat})
 
 (s/defschema LeaguesResponce

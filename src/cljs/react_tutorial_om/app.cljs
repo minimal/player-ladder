@@ -44,17 +44,19 @@
   {:opposition s/Str
    :for Nat
    :against Nat
-   :round (s/maybe s/Int)
+   (s/optional-key :round) (s/maybe s/Int)
    :date s/Inst})
 
 (s/defschema LeagueRanking
   {(s/optional-key :rd) (s/maybe s/Int)
-   :rank Nat,
+   (s/optional-key :rank) Nat,
    :matches [Match]
    (s/optional-key :round) (s/maybe s/Int)
    :team s/Str
    :draw Nat
    :loses Nat
+   :for Nat
+   :against Nat
    :wins Nat
    :points Nat})
 
@@ -326,17 +328,20 @@
        (dom/h3 nil "Rankings")
        (om/build ranking-list (:rankings app) {:opts opts})))))
 
-(defcomponentk league-row [[:data rank team wins loses points matches] :- LeagueRanking
+(defcomponentk league-row [[:data team wins loses points matches for against] :- LeagueRanking
                            owner opts]
   (render
    [_]
    (logm matches)
    (tdom/tr nil
-            (tdom/td {} rank)
+            (tdom/td {} "")
             (tdom/td {} team)
+            (tdom/td (+ wins loses))
             (tdom/td wins)
             (tdom/td loses)
-            (tdom/td (+ wins loses))
+            (tdom/td for)
+            (tdom/td against)
+            (tdom/td (- for against))
             (tdom/td points)
             (tdom/td nil (om/build last-10-games matches)))))
 
@@ -350,12 +355,11 @@
    (tdom/div nil
              (tdom/table {:class-name "rankingTable"}
                          (tdom/thead
-                          (for [header ["" "" "Wins" "Losses" "Played" "Points" "Last 10 Games"]]
+                          (for [header ["" "" "P" "W" "L" "F" "A" "Diff" "Pts" "Last 10 Games"]]
                             (tdom/th header)))
                          (tdom/tbody
-                          (om/build-all league-row (-> league :rankings))))
-             (om/build comment-form league {:opts {:url "/nowhere"}})))
-  )
+                          (om/build-all league-row (:rankings league))))
+             (om/build comment-form league {:opts {:url "/nowhere"}}))))
 
 (defn status-box [conn? owner]
   (reify
@@ -445,7 +449,7 @@
                        (if (seq path)
                          (tdom/div {:style (display (seq path))}
                                    (om/build league-list (leagues (keyword (first path))))
-                                   (om/build comment-form data {:opts {:url "/nowhere"}}))))
+                                   #_(om/build comment-form data {:opts {:url "/nowhere"}}))))
              (tdom/div {:className "large-3 columns" :dangerouslySetInnerHTML {:__html "&nbsp;"}})))
   (init-state
    [_]

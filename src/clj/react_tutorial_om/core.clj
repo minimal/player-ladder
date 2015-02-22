@@ -16,6 +16,7 @@
             [prone.middleware :as prone]
             [ranking-algorithms.core :as rank]
             [react-tutorial-om.schemas :as sch]
+            [react-tutorial-om.ranking :as ranking]
             ring.adapter.jetty
             [ring.middleware.format :refer [wrap-restful-format]]
             [ring.util.http-response :as http-resp :refer [ok]]
@@ -267,8 +268,8 @@
       (GET* "/" []
             :return sch/LeaguesResponce
             (ok
-             {:leagues test-leagues} ;(handle-rankings (map translate-keys @results))
-             ))))
+             {:leagues (into {} (for [[l {matches :matches}] (:leagues @results)]
+                                  [l {:rankings (ranking/matches->league-ranks matches)}]))}))))
     (route/not-found "Page not found")))
 
 (defn wrap-schema-errors [handler]
