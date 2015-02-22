@@ -44,7 +44,7 @@
 
 (s/defschema LeagueRanking
   {(s/optional-key :rd) (s/maybe s/Int)
-   :rank Nat,
+   ;; :rank Nat,
    :matches [Match]
    (s/optional-key :round) (s/maybe s/Int)
    :team s/Str

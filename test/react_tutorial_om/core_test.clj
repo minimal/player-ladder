@@ -1,6 +1,7 @@
 (ns react-tutorial-om.core-test
   (:require [react-tutorial-om.core :refer :all]
             [react-tutorial-om.schemas :as sch]
+            [react-tutorial-om.ranking :as ranking]
             [clojure.test :refer :all]
             [ring.mock.request :refer :all]
             [schema.core :as s]
@@ -50,3 +51,26 @@
         body (slurp-transit-body response)]
     (is (= (:status response) 200))
     (is (nil? (s/check sch/RankingsResponse body)))))
+
+(deftest league-ranks
+  (is (= {"rob"
+          {:team "rob",
+           :loses 1,
+           :wins 1,
+           :draw 0,
+           :points 1,
+           :matches
+           [{:date #inst "2015-01-01T00:00:00.000-00:00", :for 1, :against 2, :opposition "chris", :round nil}
+            {:date #inst "2015-01-01T00:00:00.000-00:00", :for 3, :against 2, :opposition "chris", :round nil}]},
+          "chris"
+          {:team "chris",
+           :loses 1,
+           :wins 1,
+           :draw 0,
+           :points 1,
+           :matches
+           [{:date #inst "2015-01-01T00:00:00.000-00:00", :for 2, :against 1, :opposition "rob", :round nil}
+            {:date #inst "2015-01-01T00:00:00.000-00:00", :for 2, :against 3, :opposition "rob", :round nil}]}}
+         (ranking/matches->league-ranks
+          [{:date #inst "2015" :winner "chris" :loser "rob" :winner-score 2 :loser-score 1}
+           {:date #inst "2015" :winner "rob" :loser "chris" :winner-score 3 :loser-score 2}]))))
