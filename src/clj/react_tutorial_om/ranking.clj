@@ -9,6 +9,7 @@
    :points 0
    :for 0
    :against 0
+   :diff 0
    :matches []})
 
 (defn new-DefaultRank [team]
@@ -29,7 +30,7 @@
    :round (:round match)})
 
 (defn sort-ranks [ranks]
-  (reverse (sort-by (fn [x] [(:points x) (- (:for x) (:against x))]) ranks)))
+  (reverse (sort-by (juxt :points :diff) ranks)))
 
 (s/defn ^:always-validate process-match :- {s/Str sch/LeagueRanking}
   "Update rankings based on match. Create a rank for a team if it
@@ -49,10 +50,12 @@
         (update-in [winner :points] inc)
         (update-in [winner :for] + (:winner-score match))
         (update-in [winner :against] + (:loser-score match))
+        (update-in [winner :diff] + (- (:winner-score match) (:loser-score match)))
         (update-in [winner :matches] conj (match->winner-match match))
         (update-in [loser :loses] inc)
         (update-in [loser :against] + (:winner-score match))
         (update-in [loser :for] + (:loser-score match))
+        (update-in [loser :diff] + (- (:loser-score match) (:winner-score match)))
         (update-in [loser :matches] conj (match->loser-match match)))))
 
 (s/defn ^:always-validate matches->league-ranks :- [sch/LeagueRanking]

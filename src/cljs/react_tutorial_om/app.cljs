@@ -57,6 +57,7 @@
    :loses Nat
    :for Nat
    :against Nat
+   :diff s/Int
    :wins Nat
    :points Nat})
 
@@ -328,7 +329,7 @@
        (dom/h3 nil "Rankings")
        (om/build ranking-list (:rankings app) {:opts opts})))))
 
-(defcomponentk league-row [[:data team wins loses points matches for against] :- LeagueRanking
+(defcomponentk league-row [[:data team wins loses points matches for against diff] :- LeagueRanking
                            owner opts]
   (render
    [_]
@@ -341,7 +342,7 @@
             (tdom/td loses)
             (tdom/td for)
             (tdom/td against)
-            (tdom/td (- for against))
+            (tdom/td diff)
             (tdom/td points)
             (tdom/td nil (om/build last-10-games matches)))))
 

@@ -53,6 +53,7 @@
    :wins Nat
    :for Nat
    :against Nat
+   :diff s/Int
    :points Nat})
 
 (s/defschema LeaguesResponce
