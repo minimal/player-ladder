@@ -107,7 +107,8 @@
 
 (defn load-edn-file [file]
   (-> (slurp file)
-      (edn/read-string)))
+      (edn/read-string)
+      ((partial s/validate sch/AllResults))))
 
 (defn init
   []
