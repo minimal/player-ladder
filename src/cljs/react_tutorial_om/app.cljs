@@ -443,9 +443,9 @@
                        (om/build navigation-view {})
                        (tdom/h3 "Leagues")
 
-                       (tdom/ul (for [[name _] leagues]
-                                  (tdom/li {} (tdom/a {:href (str "#/leagues/" (.substring (str name) 1))}
-                                                      (str name)))))
+                       (tdom/ul (for [[league _] leagues]
+                                  (tdom/li {} (tdom/a {:href (str "#/leagues/" (name league))}
+                                                      (name league)))))
                        (if (seq path)
                          (tdom/div {:style (display (seq path))}
                                    (om/build league-list (leagues (keyword (first path))))
