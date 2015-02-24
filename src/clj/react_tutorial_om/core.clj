@@ -229,6 +229,21 @@
                                col)))
                    (map-indexed (fn [i m] (assoc m :rank (inc i)))))})
 
+
+(defn handle-league-result
+  "Given an db atom, a league name and a result update the schedule and
+  matches for the league and write out to file. Return the resulting
+  state. TODO: pure update function"
+  [db league result]
+  (let [res (swap! db (fn [x]
+                        (-> x
+                            (update-in [:leagues league :schedule]
+                                       (fn [sch] (remove #(= (:id %) (:id result)) sch)) )
+                            (update-in [:leagues league :matches]
+                                       conj (assoc result :date (java.util.Date.))))))]
+    (spit db-file (with-out-str (pprint res))) ;; TODO: put in channel?
+    res))
+
 (defn make-routes [is-dev?]
   (with-routes
     (route/resources "/")
@@ -267,10 +282,15 @@
      (context
       "/leagues" []
       (GET* "/" []
-            :return sch/LeaguesResponce
+            :return sch/LeaguesResponse
             (ok
-             {:leagues (into {} (for [[l {matches :matches}] (:leagues @results)]
-                                  [l {:rankings (ranking/matches->league-ranks matches)}]))}))))
+             {:leagues (into {} (for [[l {:keys [matches schedule name]}] (:leagues @results)]
+                                  [l {:rankings (ranking/matches->league-ranks matches)
+                                      :schedule schedule
+                                      :name name}]))}))
+      (POST* "/:league/result" [league] ;TODO: take id in post url?
+             :body [result sch/LeagueResult]
+             (ok (handle-league-result results (keyword league) result)))))
     (route/not-found "Page not found")))
 
 (defn wrap-schema-errors [handler]
