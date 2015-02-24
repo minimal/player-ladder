@@ -9,6 +9,7 @@
             [om.dom :as dom :include-macros true]
             [om-tools.dom :as tdom :include-macros true]
             [om-tools.core :refer-macros [defcomponent defcomponentk]]
+            [om-tools.schema :as schema]
             [schema.core :as s :refer-macros [defschema]]
             [secretary.core :as sec :include-macros true]
             [goog.history.EventType :as EventType]
@@ -93,7 +94,7 @@
 (defn fetch-leagues
   "The comments need to be a vector, not a list. Not sure why."
   [app opts]
-  (logm "gonna fetch leagues")
+  ;; (logm "gonna fetch leagues")
   (go (let [{:keys [success status body] :as resp} (<! (http/get
                                                         "/leagues"
                                                         {:accept "application/transit+json"}))]
@@ -161,6 +162,32 @@
       [score-int score2-int]
       [false false])))
 
+(defn save-league-match!
+  "Post league result"
+  [match app opts]
+  ;; TODO: update app state as well, check result
+  (go (let [res (<! (http/post (:url opts) {:transit-params match}))]
+        (prn (:message res)))))
+
+(defn handle-league-result-submit
+  [e app owner opts {:keys [home-score away-score home away name id round]
+                     :as result}]
+  (let [[home-score away-score] (map js/parseInt [home-score away-score])
+        [winner winner-score] (if (> home-score away-score)
+                                [home home-score]
+                                [away away-score])
+        [loser loser-score] (if (= winner home)
+                              [away away-score]
+                              [home home-score])]
+    (if (and (> winner-score loser-score)
+             (= 3 winner-score))
+      (save-league-match! {:winner winner :winner-score winner-score
+                           :loser loser :loser-score loser-score
+                           :id id :round round}
+                          app {:url (str "/leagues/" name "/result")})
+      (logm "Warning: invalid score"))
+    (logm "onsubmit" result "winner" winner)))
+
 (defn handle-submit
   [e app owner opts {:keys [winner winner-score loser loser-score]}]
   (let [winner (clojure.string/trim winner)
@@ -202,7 +229,7 @@
        (dom/input #js {:type "number" :placeholder "Score" :ref "loser-score"
                        :value (:loser-score state)
                        :onChange #(handle-change % owner :loser-score)})
-       (dom/input #js {:type "submit" :value "Post"})
+       (dom/input #js {:className "button" :type "submit" :value "Post"})
        (apply dom/datalist #js {:id "players"}
               (map #(dom/option #js {:value %})
                    (:players app)))))))
@@ -329,7 +356,7 @@
        (dom/h3 nil "Rankings")
        (om/build ranking-list (:rankings app) {:opts opts})))))
 
-(defcomponentk league-row [[:data team wins loses points matches for against diff] :- LeagueRanking
+(defcomponentk league-row [[:data team wins loses points matches for against diff] :- (schema/cursor LeagueRanking)
                            owner opts]
   (render
    [_]
@@ -346,6 +373,45 @@
             (tdom/td points)
             (tdom/td nil (om/build last-10-games matches)))))
 
+(defcomponent league-schedule-row [{:keys [round home id away name] :as app} owner opts]
+  (init-state [_] {:home-score 0 :away-score 0})
+  (render-state
+   [_ state]
+   (tdom/div {:class "row"}
+     (tdom/form
+      {:class "league-form"
+       :on-submit #(do (handle-league-result-submit
+                        % app owner opts
+                        (merge state
+                               {:round round :name name
+                                :id id :home home :away away}))
+                       (.stopPropagation %))}
+      (tdom/div {:class "large-10 columns"}
+        (tdom/div {:class "large-1 columns"} round)
+        (tdom/div {:class "large-4 columns"}
+          (tdom/label {:for "moo"} home)
+          (tdom/select {:id "moo" :value (:home-score state)
+                        :on-change #(handle-change % owner :home-score)}
+            (for [n (range 4)]
+              (tdom/option {:value (str n)} n))))
+        (tdom/div {:class "large-1 columns"} "vs")
+        (tdom/div {:class "large-4 columns"}
+          (tdom/label {:for "foo"} away)
+          (tdom/select {:id "foo" :value (:away-score state)
+                        :on-change #(handle-change % owner :away-score)}
+            (for [n (range 4)]
+              (tdom/option {:value (str n)} n))))
+        (tdom/input {:class "button tiny" :type "submit" :valiue "Post"}))))))
+
+(defcomponent league-schedule [{:keys [name schedule]} owner opts]
+  (render
+   [_]
+   (logm schedule)
+   (tdom/div nil
+     (tdom/h4 {:class "subheader"} "Schedule")
+     (for [row schedule]
+       (om/build league-schedule-row (assoc row :name name) {:react-key (guid)})))))
+
 (defcomponent league-list [league owner opts]
   (init-state
    [_]
@@ -360,7 +426,7 @@
                             (tdom/th header)))
                          (tdom/tbody
                           (om/build-all league-row (:rankings league))))
-             (om/build comment-form league {:opts {:url "/nowhere"}}))))
+             (om/build league-schedule {:name (:name league) :schedule (:schedule league)}))))
 
 (defn status-box [conn? owner]
   (reify
@@ -449,8 +515,7 @@
                                                       (name league)))))
                        (if (seq path)
                          (tdom/div {:style (display (seq path))}
-                                   (om/build league-list (leagues (keyword (first path))))
-                                   #_(om/build comment-form data {:opts {:url "/nowhere"}}))))
+                           (om/build league-list (leagues (keyword (first path)))))))
              (tdom/div {:className "large-3 columns" :dangerouslySetInnerHTML {:__html "&nbsp;"}})))
   (init-state
    [_]
