@@ -122,6 +122,9 @@
          :player-view {:display false :player nil}
          :leagues {}}))
 
+(defn league-items []
+  (om/ref-cursor (:leagues (om/root-cursor app-state))))
+
 (defonce nav-ch (chan))
 
 (defn display [show]
@@ -181,10 +184,12 @@
                               [home home-score])]
     (if (and (> winner-score loser-score)
              (= 3 winner-score))
-      (save-league-match! {:winner winner :winner-score winner-score
-                           :loser loser :loser-score loser-score
-                           :id id :round round}
-                          app {:url (str "/leagues/" name "/result")})
+      (do (save-league-match! {:winner winner :winner-score winner-score
+                               :loser loser :loser-score loser-score
+                               :id id :round round}
+                              app {:url (str "/leagues/" name "/result")})
+          (om/transact! app [(keyword name) :schedule]
+                        (fn [s] (remove #(= (:id %) id) s))))
       (logm "Warning: invalid score"))
     (logm "onsubmit" result "winner" winner)))
 
@@ -377,31 +382,32 @@
   (init-state [_] {:home-score 0 :away-score 0})
   (render-state
    [_ state]
-   (tdom/div {:class "row"}
-     (tdom/form
-      {:class "league-form"
-       :on-submit #(do (handle-league-result-submit
-                        % app owner opts
-                        (merge state
-                               {:round round :name name
-                                :id id :home home :away away}))
-                       (.stopPropagation %))}
-      (tdom/div {:class "large-10 columns"}
-        (tdom/div {:class "large-1 columns"} round)
-        (tdom/div {:class "large-4 columns"}
-          (tdom/label {:for "moo"} home)
-          (tdom/select {:id "moo" :value (:home-score state)
-                        :on-change #(handle-change % owner :home-score)}
-            (for [n (range 4)]
-              (tdom/option {:value (str n)} n))))
-        (tdom/div {:class "large-1 columns"} "vs")
-        (tdom/div {:class "large-4 columns"}
-          (tdom/label {:for "foo"} away)
-          (tdom/select {:id "foo" :value (:away-score state)
-                        :on-change #(handle-change % owner :away-score)}
-            (for [n (range 4)]
-              (tdom/option {:value (str n)} n))))
-        (tdom/input {:class "button tiny" :type "submit" :valiue "Post"}))))))
+   (let [leagues (om/observe owner (league-items))]
+     (tdom/div {:class "row"}
+       (tdom/form
+        {:class "league-form"
+         :on-submit #(do (handle-league-result-submit
+                          % leagues owner opts
+                          (merge state
+                                 {:round round :name name
+                                  :id id :home home :away away}))
+                         (.stopPropagation %))}
+        (tdom/div {:class "large-10 columns"}
+          (tdom/div {:class "large-1 columns"} round)
+          (tdom/div {:class "large-4 columns"}
+            (tdom/label {:for "moo"} home)
+            (tdom/select {:id "moo" :value (:home-score state)
+                          :on-change #(handle-change % owner :home-score)}
+              (for [n (range 4)]
+                (tdom/option {:value (str n)} n))))
+          (tdom/div {:class "large-1 columns"} "vs")
+          (tdom/div {:class "large-4 columns"}
+            (tdom/label {:for "foo"} away)
+            (tdom/select {:id "foo" :value (:away-score state)
+                          :on-change #(handle-change % owner :away-score)}
+              (for [n (range 4)]
+                (tdom/option {:value (str n)} n))))
+          (tdom/input {:class "button tiny" :type "submit" :valiue "Post"})))))))
 
 (defcomponent league-schedule [{:keys [name schedule]} owner opts]
   (render
@@ -420,13 +426,14 @@
    [_]
    (logm league)
    (tdom/div nil
-             (tdom/table {:class-name "rankingTable"}
-                         (tdom/thead
-                          (for [header ["" "" "P" "W" "L" "F" "A" "Diff" "Pts" "Last 10 Games"]]
-                            (tdom/th header)))
-                         (tdom/tbody
-                          (om/build-all league-row (:rankings league))))
-             (om/build league-schedule {:name (:name league) :schedule (:schedule league)}))))
+     (tdom/h3 (:name league))
+     (tdom/table {:class-name "rankingTable"}
+                 (tdom/thead
+                  (for [header ["" "" "P" "W" "L" "F" "A" "Diff" "Pts" "Last 10 Games"]]
+                    (tdom/th header)))
+                 (tdom/tbody
+                  (om/build-all league-row (:rankings league))))
+     (om/build league-schedule {:name (:name league) :schedule (:schedule league)}))))
 
 (defn status-box [conn? owner]
   (reify
