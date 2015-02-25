@@ -12,6 +12,7 @@
             [om-tools.schema :as schema]
             [schema.core :as s :refer-macros [defschema]]
             [secretary.core :as sec :include-macros true]
+            [sablono.core :as html :refer-macros [html]]
             [goog.history.EventType :as EventType]
             [cljs-http.client :as http]
             [figwheel.client :as fw :include-macros true]
@@ -366,25 +367,26 @@
   (render
    [_]
    (logm matches)
-   (tdom/tr nil
-            (tdom/td {} "")
-            (tdom/td {} team)
-            (tdom/td (+ wins loses))
-            (tdom/td wins)
-            (tdom/td loses)
-            (tdom/td for)
-            (tdom/td against)
-            (tdom/td diff)
-            (tdom/td points)
-            (tdom/td nil (om/build last-10-games matches)))))
+   (html [:tr
+          [:td ""]
+          [:td team]
+          [:td (+ wins loses)]
+          [:td wins]
+          [:td loses]
+          [:td for]
+          [:td against]
+          [:td diff]
+          [:td points]
+          [:td (om/build last-10-games matches)]])))
 
 (defcomponent league-schedule-row [{:keys [round home id away name] :as app} owner opts]
   (init-state [_] {:home-score 0 :away-score 0})
   (render-state
    [_ state]
    (let [leagues (om/observe owner (league-items))]
-     (tdom/div {:class "row"}
-       (tdom/form
+     (html
+      [:.row
+       [:form
         {:class "league-form"
          :on-submit #(do (handle-league-result-submit
                           % leagues owner opts
@@ -392,31 +394,32 @@
                                  {:round round :name name
                                   :id id :home home :away away}))
                          (.stopPropagation %))}
-        (tdom/div {:class "large-10 columns"}
-          (tdom/div {:class "large-1 columns"} round)
-          (tdom/div {:class "large-4 columns"}
-            (tdom/label {:for "moo"} home)
-            (tdom/select {:id "moo" :value (:home-score state)
-                          :on-change #(handle-change % owner :home-score)}
-              (for [n (range 4)]
-                (tdom/option {:value (str n)} n))))
-          (tdom/div {:class "large-1 columns"} "vs")
-          (tdom/div {:class "large-4 columns"}
-            (tdom/label {:for "foo"} away)
-            (tdom/select {:id "foo" :value (:away-score state)
-                          :on-change #(handle-change % owner :away-score)}
-              (for [n (range 4)]
-                (tdom/option {:value (str n)} n))))
-          (tdom/input {:class "button tiny" :type "submit" :valiue "Post"})))))))
+        [:.large-10.colums
+         [:.large-1.columns round]
+         [:.large-4.columns
+          [:label {:for "moo"} home]
+          [:select {:id "moo" :value (:home-score state)
+                    :on-change #(handle-change % owner :home-score)}
+           (for [n (range 4)]
+             [:option {:value (str n)} n])]]
+         [:.large-1.columns "vs"]
+         [:.large-4.columns
+          [:label {:for "foo"} away]
+          [:select {:id "foo" :value (:away-score state)
+                    :on-change #(handle-change % owner :away-score)}
+           (for [n (range 4)]
+             [:option {:value (str n)} n])]]
+         [:input {:class "button tiny" :type "submit" :value "Post"}]]]]))))
 
 (defcomponent league-schedule [{:keys [name schedule]} owner opts]
   (render
    [_]
    (logm schedule)
-   (tdom/div nil
-     (tdom/h4 {:class "subheader"} "Schedule")
+   (html
+    [:div
+     [:h4.subheader "Schedule"]
      (for [row schedule]
-       (om/build league-schedule-row (assoc row :name name) {:react-key (guid)})))))
+       (om/build league-schedule-row (assoc row :name name) {:react-key (guid)}))])))
 
 (defcomponent league-list [league owner opts]
   (init-state
@@ -425,15 +428,16 @@
   (render
    [_]
    (logm league)
-   (tdom/div nil
-     (tdom/h3 (:name league))
-     (tdom/table {:class-name "rankingTable"}
-                 (tdom/thead
-                  (for [header ["" "" "P" "W" "L" "F" "A" "Diff" "Pts" "Last 10 Games"]]
-                    (tdom/th header)))
-                 (tdom/tbody
-                  (om/build-all league-row (:rankings league))))
-     (om/build league-schedule {:name (:name league) :schedule (:schedule league)}))))
+   (html
+    [:div
+     [:h3 (:name league)]
+     [:table.rankingTable
+      [:thead
+       (for [header ["" "" "P" "W" "L" "F" "A" "Diff" "Pts" "Last 10 Games"]]
+         [:th header])]
+      [:tbody
+       (om/build-all league-row (:rankings league))]]
+     (om/build league-schedule {:name (:name league) :schedule (:schedule league)})])))
 
 (defn status-box [conn? owner]
   (reify
