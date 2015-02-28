@@ -45,28 +45,24 @@
         (time/after? joda-date
                      (time/minus now offset))))))
 
-(defonce results (atom []))
-
-(def db-file "results.edn")
-
 (defn load-edn-file [file]
   (-> (slurp file)
       (edn/read-string)
       ((partial s/validate sch/AllResults))))
 
-(defn init
-  []
-  (reset! results (load-edn-file db-file)))
+(defn init!
+  [db db-file]
+  (reset! db (load-edn-file db-file)))
 
 (defn save-match! ;; TODO: write to a db
-  [match]
+  [match db db-file]
   (let [comment (-> match
                     ;; TODO: coerce data earlier
                     (update-in [:winner] clojure.string/lower-case)
                     (update-in [:loser] clojure.string/lower-case)
                     (assoc :date (java.util.Date.)))]
-    (swap! results update-in [:singles-ladder] conj comment)
-    (spit db-file (with-out-str (pprint @results))) ;; put in channel?
+    (swap! db update-in [:singles-ladder] conj comment)
+    (spit db-file (with-out-str (pprint @db))) ;; put in channel?
     {:message "Saved comment!"}))
 
 (defn translate-keys [{:keys [winner winner-score loser loser-score date]}]
@@ -178,7 +174,7 @@
   "Given an db atom, a league name and a result update the schedule and
   matches for the league and write out to file. Return the resulting
   state. TODO: pure update function"
-  [db league result]
+  [db db-file league result]
   (let [res (swap! db (fn [x]
                         (-> x
                             (update-in [:leagues league :schedule]
@@ -188,14 +184,14 @@
     (spit db-file (with-out-str (pprint res))) ;; TODO: put in channel?
     res))
 
-(defn make-routes [is-dev?]
+(defn make-routes [is-dev? db db-file]
   (with-routes
     (route/resources "/")
     (route/resources "/react" {:root "react"})
     (swagger-ui :swagger-docs "/api/docs")
     (swagger-docs "/api/docs")
     (GET "/app" [] (apply str (page true)))
-    (GET "/init" [] (init) "inited")
+    (GET "/init" [] (init! db) "inited")
     (swaggered
      "matches"
      :description "Matches"
@@ -207,10 +203,10 @@
             :summary "all the matches"
             (ok
              {:message "Here's the results!"
-              :matches (take-last 20 (:singles-ladder @results))}))
+              :matches (take-last 20 (:singles-ladder @db))}))
       (POST* "/" req
              :body [result sch/Result]
-             (ok (save-match! result)))))
+             (ok (save-match! result db db-file)))))
     (swaggered
      "rankings"
      :description "Rankings"
@@ -219,7 +215,7 @@
       (GET* "/" []
             :return sch/RankingsResponse
             (ok
-             (handle-rankings (map translate-keys (:singles-ladder @results)))))))
+             (handle-rankings (map translate-keys (:singles-ladder @db)))))))
     (swaggered
      "leagues"
      :description "Leagues"
@@ -228,13 +224,13 @@
       (GET* "/" []
             :return sch/LeaguesResponse
             (ok
-             {:leagues (into {} (for [[l {:keys [matches schedule name]}] (:leagues @results)]
+             {:leagues (into {} (for [[l {:keys [matches schedule name]}] (:leagues @db)]
                                   [l {:rankings (ranking/matches->league-ranks matches)
                                       :schedule schedule
                                       :name name}]))}))
       (POST* "/:league/result" [league] ;TODO: take id in post url?
              :body [result sch/LeagueResult]
-             (ok (handle-league-result results (keyword league) result)))))
+             (ok (handle-league-result db db-file (keyword league) result)))))
     (route/not-found "Page not found")))
 
 (defn wrap-schema-errors [handler]
@@ -252,33 +248,36 @@
       #_(println res)
       res)))
 
-(defn make-handler [is-dev?]
-  (-> (make-routes is-dev?)
-    ;; log-request-middleware
+(defn make-handler [is-dev? db db-file]
+  (-> (make-routes is-dev? db db-file)
+      ;; log-request-middleware
 
-    (cond-> is-dev? (prone/wrap-exceptions
-                     {:app-namespaces ["react-tutorial-om"]
-                      :skip-prone? (fn [{:keys [headers]}]
-                                     (println headers)
-                                     (contains? headers "postman-token"))}))
-    compojure.api.middleware/api-middleware
-    (wrap-restful-format :formats  [:json :transit-json])
+      (cond-> is-dev? (prone/wrap-exceptions
+                       {:app-namespaces ["react-tutorial-om"]
+                        :skip-prone? (fn [{:keys [headers]}]
+                                       (println headers)
+                                       (contains? headers "postman-token"))}))
+      compojure.api.middleware/api-middleware
+      (wrap-restful-format :formats  [:json :transit-json])
 
-    ;; wrap-schema-errors
-    ;; ring.swagger.middleware/catch-validation-errors
-    ;; ring.middleware.http-response/catch-response
-    ))
+      ;; wrap-schema-errors
+      ;; ring.swagger.middleware/catch-validation-errors
+      ;; ring.middleware.http-response/catch-response
+      ))
 
 (defrecord WebServer [ring is-dev?]
   component/Lifecycle
   (start [component]
-    (init)
-    (let [app (make-handler is-dev?)]
+    (let [db (atom {})
+          db-file "results.edn"
+          _ (init! db "results.edn")
+          app (make-handler is-dev? db db-file)]
       #_(when is-dev?
           (inspect/start))
       (assoc component
-        :server
-        (ring.adapter.jetty/run-jetty app ring))))
+             :server
+             (ring.adapter.jetty/run-jetty app ring)
+             :db db)))
   (stop [component]
     #_(when is-dev?
         (inspect/stop))
