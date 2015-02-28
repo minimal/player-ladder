@@ -50,19 +50,21 @@
       (edn/read-string)
       ((partial s/validate sch/AllResults))))
 
+(defn spit-edn-file [file data]
+  (spit file (with-out-str (pprint data))))
+
 (defn init!
   [db db-file]
   (reset! db (load-edn-file db-file)))
 
 (defn save-match! ;; TODO: write to a db
-  [match db db-file]
+  [match db]
   (let [comment (-> match
                     ;; TODO: coerce data earlier
                     (update-in [:winner] clojure.string/lower-case)
                     (update-in [:loser] clojure.string/lower-case)
                     (assoc :date (java.util.Date.)))]
     (swap! db update-in [:singles-ladder] conj comment)
-    (spit db-file (with-out-str (pprint @db))) ;; put in channel?
     {:message "Saved comment!"}))
 
 (defn translate-keys [{:keys [winner winner-score loser loser-score date]}]
@@ -173,17 +175,16 @@
   "Given an db atom, a league name and a result update the schedule and
   matches for the league and write out to file. Return the resulting
   state. TODO: pure update function"
-  [db db-file league result]
+  [db league result]
   (let [res (swap! db (fn [x]
                         (-> x
                             (update-in [:leagues league :schedule]
                                        (fn [sch] (remove #(= (:id %) (:id result)) sch)))
                             (update-in [:leagues league :matches]
                                        conj (assoc result :date (java.util.Date.))))))]
-    (spit db-file (with-out-str (pprint res))) ;; TODO: put in channel?
     res))
 
-(defn make-routes [is-dev? db db-file]
+(defn make-routes [is-dev? db]
   (with-routes
     (route/resources "/")
     (route/resources "/react" {:root "react"})
@@ -205,7 +206,7 @@
               :matches (take-last 20 (:singles-ladder @db))}))
       (POST* "/" req
              :body [result sch/Result]
-             (ok (save-match! result db db-file)))))
+             (ok (save-match! result db)))))
     (swaggered
      "rankings"
      :description "Rankings"
@@ -229,7 +230,7 @@
                                       :name name}]))}))
       (POST* "/:league/result" [league] ;TODO: take id in post url?
              :body [result sch/LeagueResult]
-             (ok (handle-league-result db db-file (keyword league) result)))))
+             (ok (handle-league-result db (keyword league) result)))))
     (route/not-found "Page not found")))
 
 (defn wrap-schema-errors [handler]
@@ -247,8 +248,8 @@
       #_(println res)
       res)))
 
-(defn make-handler [is-dev? db db-file]
-  (-> (make-routes is-dev? db db-file)
+(defn make-handler [is-dev? db]
+  (-> (make-routes is-dev? db)
       ;; log-request-middleware
 
       (cond-> is-dev? (prone/wrap-exceptions
@@ -269,13 +270,17 @@
   (start [component]
     (let [db (atom {})
           db-file "results.edn"
+          file-agent (agent nil :error-handler println)
           _ (init! db "results.edn")
-          app (make-handler is-dev? db db-file)]
+          app (make-handler is-dev? db)]
+      (add-watch db :writer (fn [_ _ _ new]
+                              (send-off file-agent (fn [_] (spit-edn-file db-file new)))))
       #_(when is-dev?
           (inspect/start))
       (assoc component
              :server
              (ring.adapter.jetty/run-jetty app ring)
+             :file-agent file-agent
              :db db)))
   (stop [component]
     #_(when is-dev?
