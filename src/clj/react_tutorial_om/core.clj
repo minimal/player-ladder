@@ -91,9 +91,9 @@
   [total offset idxs]
   (for [idx idxs]
     (cond
-     (neg? idx) (- offset idx)
-     (> (inc idx) total) (- (dec idx) offset offset)
-     :else idx)))
+      (neg? idx) (- offset idx)
+      (> (inc idx) total) (- (dec idx) offset offset)
+      :else idx)))
 
 (defn suggest-opponent
   "Given a user match history and map of user ranks suggest the next
@@ -114,8 +114,7 @@
           near-totals (reduce (fn [acc [k v]] (assoc acc k v))
                               (zipmap oppnames-set (repeat 0)) ;; Start at 0
                               matchfreqs)
-          sorted-totals (sort-by second near-totals)
-          ]
+          sorted-totals (sort-by second near-totals)]
       (ffirst sorted-totals))
     (catch IndexOutOfBoundsException e
       (println "Error in suggest oponent" e)
@@ -178,7 +177,7 @@
   (let [res (swap! db (fn [x]
                         (-> x
                             (update-in [:leagues league :schedule]
-                                       (fn [sch] (remove #(= (:id %) (:id result)) sch)) )
+                                       (fn [sch] (remove #(= (:id %) (:id result)) sch)))
                             (update-in [:leagues league :matches]
                                        conj (assoc result :date (java.util.Date.))))))]
     (spit db-file (with-out-str (pprint res))) ;; TODO: put in channel?

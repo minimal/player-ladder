@@ -28,7 +28,7 @@
 (defonce fig-builder (atom nil))
 
 (defn start-figwheel []
-  (let [server (fig/start-server { :css-dirs ["resources/public/css"] })
+  (let [server (fig/start-server { :css-dirs ["resources/public/css"]})
         config {:builds [{:source-paths ["src/cljs"]
                           :compiler {:output-to     "resources/public/js/app.js"
                                      :output-dir    "resources/public/js/out"
