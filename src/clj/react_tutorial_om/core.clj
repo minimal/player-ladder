@@ -30,62 +30,6 @@
      ;; (prepend (html [:script {:type "text/javascript" :src "/react/react.js"}]))
      (append  (html [:script {:type "text/javascript"} "goog.require('react_tutorial_om.app')"]))))
 
-(def test-leagues
-  {:a {:rankings [{:draw 0,
-                   :loses 0,
-                   :matches [{:against 0,
-                              :date #inst "2014-11-30T19:25:16.876-00:00",
-                              :for 1,
-                              :opposition "rob",
-                              :round nil}
-                             {:against 0,
-                              :date #inst "2014-11-30T19:25:50.497-00:00",
-                              :for 1,
-                              :opposition "rob",
-                              :round nil}
-                             {:against 0,
-                              :date #inst "2014-11-30T23:58:00.584-00:00",
-                              :for 1,
-                              :opposition "rob",
-                              :round nil}
-                             {:against 0,
-                              :date #inst "2014-12-10T20:36:01.521-00:00",
-                              :for 1,
-                              :opposition "rob",
-                              :round nil}],
-                   :rank 1,
-                   :points 12
-                   :rd nil,
-                   :round nil,
-                   :team "chris",
-                   :wins 4}
-                  {:draw 0,
-                   :loses 0,
-                   :matches [{:against 1,
-                              :date #inst "2014-11-30T23:09:52.941-00:00",
-                              :for 2,
-                              :opposition "moo",
-                              :round nil}],
-                   :rank 2,
-                   :points 3
-                   :rd nil,
-                   :round nil,
-                   :team "blah",
-                   :wins 1}]}
-   :b {:rankings [{:draw 0,
-                   :loses 0,
-                   :matches [{:against 1,
-                              :date #inst "2014-11-30T23:09:52.941-00:00",
-                              :for 2,
-                              :opposition "moo",
-                              :round nil}],
-                   :rank 2,
-                   :points 3
-                   :rd nil,
-                   :round nil,
-                   :team "blah",
-                   :wins 1}]}})
-
 (deftemplate page (io/resource "public/index.html")
   [is-dev?]
   [:body] (if is-dev? inject-devmode-html identity))
