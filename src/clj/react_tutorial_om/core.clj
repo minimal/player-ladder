@@ -190,7 +190,7 @@
     (route/resources "/react" {:root "react"})
     (swagger-ui :swagger-docs "/api/docs")
     (swagger-docs "/api/docs")
-    (GET "/app" [] (apply str (page true)))
+    (GET "/app" [] (apply str (page is-dev?)))
     (GET "/init" [] (init! db) "inited")
     (swaggered
      "matches"
