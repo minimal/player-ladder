@@ -19,6 +19,7 @@
                  [prismatic/om-tools "0.3.10"]
                  [prismatic/schema "0.3.7"]
                  [prone "0.8.1"]
+                 [figwheel "0.2.2-SNAPSHOT"]
                  [ranking-algorithms "0.1.0-SNAPSHOT"]
                  [ring "1.3.2"]
                  [metosin/ring-middleware-format "0.5.0"]
