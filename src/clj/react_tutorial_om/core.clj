@@ -57,15 +57,25 @@
   [db db-file]
   (reset! db (load-edn-file db-file)))
 
-(defn save-match! ;; TODO: write to a db
-  [match db]
-  (let [comment (-> match
-                    ;; TODO: coerce data earlier
-                    (update-in [:winner] clojure.string/lower-case)
-                    (update-in [:loser] clojure.string/lower-case)
-                    (assoc :date (java.util.Date.)))]
-    (swap! db update-in [:singles-ladder] conj comment)
-    {:message "Saved comment!"}))
+
+(s/defn ^:always-validate update-ladder-match
+  "Coerce the data into the format we want and add date"
+  [match :- sch/Result]
+  (-> match
+      ;; TODO: coerce data earlier
+      (update-in [:winner] clojure.string/lower-case)
+      (update-in [:loser] clojure.string/lower-case)
+      (assoc :date (java.util.Date.))))
+
+(s/defn ^:always-validate update-ladder-results :- sch/AllResults
+  [match :- sch/Result
+   doc :- sch/AllResults]
+  (update-in doc [:singles-ladder] conj (update-ladder-match match)))
+
+(s/defn ^:always-validate  save-match! ;; TODO: write to a db
+  [match :- sch/Result, db ]
+  (swap! db (partial update-ladder-results match))
+  {:message "Saved Match!"})
 
 (defn translate-keys [{:keys [winner winner-score loser loser-score date]}]
   {:home winner
@@ -170,19 +180,23 @@
                                col)))
                    (map-indexed (fn [i m] (assoc m :rank (inc i)))))})
 
+(s/defn ^:always-validate update-league-result
+  "Update the state map with the result of the league match. Remove
+  match from schedule and also update the ladder with the result"
+  [result :- sch/LeagueResult league doc]
+  (-> doc
+      (update-in [:leagues league :schedule]
+                 (fn [sch] (remove #(= (:id %) (:id result)) sch)))
+      (update-in [:leagues league :matches]
+                 conj (assoc result :date (java.util.Date.)))
+      ((partial update-ladder-results (dissoc result :id :round)))))
 
 (defn handle-league-result
   "Given an db atom, a league name and a result update the schedule and
   matches for the league and write out to file. Return the resulting
   state. TODO: pure update function"
   [db league result]
-  (let [res (swap! db (fn [x]
-                        (-> x
-                            (update-in [:leagues league :schedule]
-                                       (fn [sch] (remove #(= (:id %) (:id result)) sch)))
-                            (update-in [:leagues league :matches]
-                                       conj (assoc result :date (java.util.Date.))))))]
-    res))
+  (swap! db (partial update-league-result result league)))
 
 (defn make-routes [is-dev? db]
   (with-routes
