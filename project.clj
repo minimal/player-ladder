@@ -6,8 +6,8 @@
   :dependencies [[clj-time "0.8.0"]
                  [cljs-http "0.1.23"]
                  [com.matthiasnehlsen/inspect "0.1.5"]
-                 [com.stuartsierra/component "0.2.2"]
-                 [compojure "1.2.2"]
+                 [com.stuartsierra/component "0.2.3"]
+                 [compojure "1.3.2"]
                  [enlive "1.1.5"]
                  [environ "1.0.0"]
                  [metosin/compojure-api "0.16.6" :exclude [ring-middleware-format]]
@@ -32,14 +32,11 @@
                                               javax.jms/jms
                                               com.sun.jdmk/jmxtools
                                               com.sun.jmx/jmxri]]
-                 [weasel "0.5.0"]] ;; 0.6.0 Requires ClojureScript 0.0-2814 or newer
+                 [weasel "0.6.0"]]
 
   :plugins [[lein-cljsbuild "1.0.5"]
             [lein-environ "1.0.0"]
             [lein-figwheel "0.2.2-SNAPSHOT"]]
-
-  :ring {:handler react-tutorial-om.core/app
-         :init    react-tutorial-om.core/init}
 
   ;; :jvm-opts ["-agentlib:jdwp=transport=dt_socket,server=y,suspend=n"]
 
@@ -50,7 +47,7 @@
                                   [com.cemerick/piggieback "0.1.5"]
                                   ;; [omdev "0.1.3-SNAPSHOT"]
                                   [spellhouse/clairvoyant "0.0-48-gf5e59d3"]
-                                  [org.clojure/tools.namespace "0.2.9"]
+                                  [org.clojure/tools.namespace "0.2.10"]
                                   [reloaded.repl "0.1.0"]
                                   [ring-mock "0.1.5"]]
                    :source-paths ["dev"]
