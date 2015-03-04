@@ -1,7 +1,13 @@
 (ns react-tutorial-om.core-test
   (:require [react-tutorial-om.core :refer :all]
+            [react-tutorial-om.schemas :as sch]
+            [react-tutorial-om.ranking :as ranking]
             [clojure.test :refer :all]
-            [clj-time.coerce :refer [from-date]]))
+            [ring.mock.request :refer :all]
+            [schema.core :as s]
+            [clojure.data.json :as json]
+            [clj-time.coerce :refer [from-date]]
+            [cognitect.transit :as transit]))
 
 (deftest suggesting
   (testing "Normalise indexes"
@@ -30,3 +36,45 @@
               {:loses 1, :draw 0, :wins 0, :rank 3, :team "losers", :ranking 1184.0, :rd nil, :round nil}
               {:loses 2, :draw 0, :wins 0, :rank 4, :team "chelsea", :ranking 1169.47, :rd nil, :round nil}]
              (calc-ranking-data matches))))))
+
+(defn transit-header [req]
+  (header req "Accept" "application/transit+json"))
+
+(defn slurp-transit-body [response]
+  (-> response :body (transit/reader :json) transit/read))
+
+(deftest test-app
+  (let [app (make-handler false (atom {}) nil)
+        response (-> (request :get "/rankings")
+                   transit-header
+                   app)
+        body (slurp-transit-body response)]
+    (is (= (:status response) 200))
+    (is (nil? (s/check sch/RankingsResponse body)))))
+
+(deftest league-ranks
+  (is (= [{:team "chris",
+           :loses 1,
+           :wins 1,
+           :draw 0,
+           :points 1,
+           :for 5,
+           :against 4,
+           :diff 1,
+           :matches
+           [{:date #inst "2015-01-01T00:00:00.000-00:00", :for 3, :against 1, :opposition "rob", :round nil}
+            {:date #inst "2015-01-01T00:00:00.000-00:00", :for 2, :against 3, :opposition "rob", :round nil}]}
+          {:team "rob",
+           :loses 1,
+           :wins 1,
+           :draw 0,
+           :points 1,
+           :for 4,
+           :against 5,
+           :diff -1,
+           :matches
+           [{:date #inst "2015-01-01T00:00:00.000-00:00", :for 1, :against 3, :opposition "chris", :round nil}
+            {:date #inst "2015-01-01T00:00:00.000-00:00", :for 3, :against 2, :opposition "chris", :round nil}]}]
+         (ranking/matches->league-ranks
+          [{:date #inst "2015" :winner "chris" :loser "rob" :winner-score 3 :loser-score 1}
+           {:date #inst "2015" :winner "rob" :loser "chris" :winner-score 3 :loser-score 2}]))))

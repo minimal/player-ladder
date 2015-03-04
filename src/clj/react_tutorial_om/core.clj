@@ -1,25 +1,27 @@
 (ns react-tutorial-om.core
-  (:require [cheshire.core :as json]
+  (:require [clj-http.client :as client]
             [clj-time.coerce :refer [from-date from-string]]
             [clj-time.core :as time]
             [clojure.edn :as edn]
             [clojure.java.io :as io]
             [clojure.pprint :refer [pprint]]
+            [clojure.string :as str]
             [compojure.api.routes :refer [with-routes]]
-            [compojure.api.sweet :refer [GET* POST* swagger-ui swagger-docs swaggered context]]
-            [compojure.core :refer [GET POST defroutes]]
-            [compojure.handler :as handler]
+            [compojure.api.sweet
+             :refer
+             [GET* POST* context swagger-docs swagger-ui swaggered]]
+            [compojure.core :refer [GET]]
             [compojure.route :as route]
             [com.stuartsierra.component :as component]
-            [net.cgrand.enlive-html :refer [deftemplate set-attr prepend append html]]
+            [net.cgrand.enlive-html :refer [append deftemplate html prepend set-attr]]
             [prone.debug :refer [debug]]
             [prone.middleware :as prone]
             [ranking-algorithms.core :as rank]
+            [react-tutorial-om.ranking :as ranking]
+            [react-tutorial-om.schemas :as sch]
             ring.adapter.jetty
             [ring.middleware.format :refer [wrap-restful-format]]
-            [ring.middleware.format-response :refer [wrap-restful-response]]
-            [ring.util.http-response :refer [ok] :as http-resp]
-            [ring.util.response :as resp]
+            [ring.util.http-response :as http-resp :refer [ok]]
             [schema.core :as s]
             [slingshot.slingshot :refer [throw+ try+]]))
 
@@ -27,7 +29,7 @@
   (comp
      (set-attr :class "is-dev")
      (prepend (html [:script {:type "text/javascript" :src "/js/out/goog/base.js"}]))
-     (prepend (html [:script {:type "text/javascript" :src "/react/react.js"}]))
+     ;; (prepend (html [:script {:type "text/javascript" :src "/react/react.js"}]))
      (append  (html [:script {:type "text/javascript"} "goog.require('react_tutorial_om.app')"]))))
 
 (deftemplate page (io/resource "public/index.html")
@@ -45,30 +47,37 @@
         (time/after? joda-date
                      (time/minus now offset))))))
 
-(def results (atom [{:winner "chris", :winner-score 10, :loser "losers", :loser-score 0}
-                    {:winner "arsenal", :winner-score 3, :loser "chelsea", :loser-score 0}]))
-
-(def db-file "results.edn")
-
 (defn load-edn-file [file]
   (-> (slurp file)
       (edn/read-string)
-      vec))
+      ((partial s/validate sch/AllResults))))
 
-(defn init
-  []
-  (reset! results (load-edn-file db-file)))
+(defn spit-edn-file [file data]
+  (spit file (with-out-str (pprint data))))
 
-(defn save-match! ;; TODO: write to a db
-  [match]
-  (let [comment (-> match
-                    ;; TODO: coerce data earlier
-                    (update-in [:winner] clojure.string/lower-case)
-                    (update-in [:loser] clojure.string/lower-case)
-                    (assoc :date (java.util.Date.)))]
-    (swap! results conj comment)
-    (spit db-file (with-out-str (pprint @results))) ;; put in channel?
-    {:message "Saved comment!"}))
+(defn init!
+  [db db-file]
+  (reset! db (load-edn-file db-file)))
+
+
+(s/defn ^:always-validate update-ladder-match
+  "Coerce the data into the format we want and add date"
+  [match :- sch/Result]
+  (-> match
+      ;; TODO: coerce data earlier
+      (update-in [:winner] clojure.string/lower-case)
+      (update-in [:loser] clojure.string/lower-case)
+      (assoc :date (java.util.Date.))))
+
+(s/defn ^:always-validate update-ladder-results :- sch/AllResults
+  [match :- sch/Result
+   doc :- sch/AllResults]
+  (update-in doc [:singles-ladder] conj (update-ladder-match match)))
+
+(s/defn ^:always-validate  save-match! ;; TODO: write to a db
+  [match :- sch/Result, db ]
+  (swap! db (partial update-ladder-results match))
+  {:message "Saved Match!"})
 
 (defn translate-keys [{:keys [winner winner-score loser loser-score date]}]
   {:home winner
@@ -96,9 +105,9 @@
   [total offset idxs]
   (for [idx idxs]
     (cond
-     (neg? idx) (- offset idx)
-     (> (inc idx) total) (- (dec idx) offset offset)
-     :else idx)))
+      (neg? idx) (- offset idx)
+      (> (inc idx) total) (- (dec idx) offset offset)
+      :else idx)))
 
 (defn suggest-opponent
   "Given a user match history and map of user ranks suggest the next
@@ -119,9 +128,11 @@
           near-totals (reduce (fn [acc [k v]] (assoc acc k v))
                               (zipmap oppnames-set (repeat 0)) ;; Start at 0
                               matchfreqs)
-          sorted-totals (sort-by second near-totals)
-          ]
-       (ffirst sorted-totals))))
+          sorted-totals (sort-by second near-totals)]
+      (ffirst sorted-totals))
+    (catch IndexOutOfBoundsException e
+      (println "Error in suggest oponent" e)
+      "")))
 
 (defn- vectorise-names [rankings]
   (vec (map :team rankings)))
@@ -153,39 +164,7 @@
   (println (filter #(= (:team %) "jons") x))
   x)
 
-(s/defschema Nat
-  (s/both s/Int
-          (s/pred #(not (neg? %)) "Zero or more")))
 
-(s/defschema Result
-  "Result is a map of winner/loser names and scores"
-  (s/both {:winner s/Str
-           :loser s/Str
-           :winner-score Nat
-           :loser-score Nat}
-          (s/pred (fn [{:keys [winner-score loser-score]}]
-                    (> winner-score loser-score))
-                  "Winner scores more than loser")))
-
-(s/defschema Match
-  {:opposition s/Str
-   :for Nat
-   :against Nat
-   :round (s/maybe s/Int)
-   :date java.util.Date})
-
-(s/defschema Ranking
-  {(s/optional-key :rd) (s/maybe s/Int)
-   :rank Nat,
-   :matches [Match]
-   (s/optional-key :round) (s/maybe s/Int)
-   :team s/Str
-   :suggest s/Str
-   :u-wins Nat
-   :ranking s/Num
-   :draw Nat
-   :loses Nat
-   :wins Nat})
 
 (defn handle-rankings
   [results]
@@ -195,22 +174,52 @@
                    (attach-player-matches results)
                    attach-suggested-opponents
                    attach-uniques
-                   (filter (fn [{matches :matches}]
-                             (recent? (:date (last matches)))))
-                   (filter (fn [{:keys [loses wins]}] (> (+ loses wins) 4)))
+                   #_(filter (fn [{matches :matches}]
+                               (recent? (:date (last matches)))))
+                   #_(filter (fn [{:keys [loses wins]}] (> (+ loses wins) 4)))
                    ((fn [col] (if (> (count col) 5)
                                (drop-last 2 col)
                                col)))
                    (map-indexed (fn [i m] (assoc m :rank (inc i)))))})
 
-(defn make-routes [is-dev?]
+(s/defn ^:always-validate update-league-result
+  "Update the state map with the result of the league match. Remove
+  match from schedule and also update the ladder with the result"
+  [result :- sch/LeagueResult league doc]
+  (-> doc
+      (update-in [:leagues league :schedule]
+                 (fn [sch] (remove #(= (:id %) (:id result)) sch)))
+      (update-in [:leagues league :matches]
+                 conj (assoc result :date (java.util.Date.)))
+      ((partial update-ladder-results (dissoc result :id :round)))))
+
+(defn handle-league-result
+  "Given an db atom, a league name and a result update the schedule and
+  matches for the league and write out to file. Return the resulting
+  state. Also post to slack if possible."
+  [db league {:keys [winner loser winner-score loser-score] :as result} slack-url]
+  (swap! db (partial update-league-result result league))
+  (when-not (str/blank? slack-url)
+    (future
+      (try+
+       (client/post slack-url
+                    {:form-params {:text (format "%s wins against %s in league %s: %s - %s"
+                                                 winner loser (name league) winner-score loser-score)}
+                     :content-type :json})
+       (catch [:status 403] {:keys [request-time headers body]}
+         (println "Slack 403 " request-time headers))
+       (catch Object _
+         (println (:throwable &throw-context) "unexpected error")))))
+  {:message "ok"})
+
+(defn make-routes [is-dev? db slack-url]
   (with-routes
     (route/resources "/")
     (route/resources "/react" {:root "react"})
     (swagger-ui :swagger-docs "/api/docs")
     (swagger-docs "/api/docs")
-    (GET "/app" [] (apply str (page true)))
-    (GET "/init" [] (init) "inited")
+    (GET "/app" [] (apply str (page is-dev?)))
+    (GET "/init" [] (init! db) "inited")
     (swaggered
      "matches"
      :description "Matches"
@@ -222,21 +231,34 @@
             :summary "all the matches"
             (ok
              {:message "Here's the results!"
-              :matches (take-last 20 @results)}))
+              :matches (take-last 20 (:singles-ladder @db))}))
       (POST* "/" req
-             :body [result Result]
-             (ok (save-match! result)))))
+             :body [result sch/Result]
+             (ok (save-match! result db)))))
     (swaggered
      "rankings"
      :description "Rankings"
      (context
       "/rankings" []
       (GET* "/" []
-            :return {:message s/Str
-                     :players #{s/Str}
-                     :rankings [Ranking]}
+            :return sch/RankingsResponse
             (ok
-             (handle-rankings (map translate-keys @results))))))
+             (handle-rankings (map translate-keys (:singles-ladder @db)))))))
+    (swaggered
+     "leagues"
+     :description "Leagues"
+     (context
+      "/leagues" []
+      (GET* "/" []
+            :return sch/LeaguesResponse
+            (ok
+             {:leagues (into {} (for [[l {:keys [matches schedule name]}] (:leagues @db)]
+                                  [l {:rankings (ranking/matches->league-ranks matches)
+                                      :schedule schedule
+                                      :name name}]))}))
+      (POST* "/:league/result" [league] ;TODO: take id in post url?
+             :body [result sch/LeagueResult]
+             (ok (handle-league-result db (keyword league) result slack-url)))))
     (route/not-found "Page not found")))
 
 (defn wrap-schema-errors [handler]
@@ -247,23 +269,50 @@
        (println all)
        (http-resp/bad-request {:error error})))))
 
-(defn make-handler [is-dev?]
-  (-> (make-routes is-dev?)
+(defn log-request-middleware [handler]
+  (fn [request]
+                                        ;(puget.printer/pprint request)
+    (let [res (handler request)]
+      #_(println res)
+      res)))
+
+(defn make-handler [is-dev? db slack-url]
+  (-> (make-routes is-dev? db slack-url)
+      ;; log-request-middleware
+
+      (cond-> is-dev? (prone/wrap-exceptions
+                       {:app-namespaces ["react-tutorial-om"]
+                        :skip-prone? (fn [{:keys [headers]}]
+                                       (println headers)
+                                       (contains? headers "postman-token"))}))
       compojure.api.middleware/api-middleware
       (wrap-restful-format :formats  [:json :transit-json])
+
+      ;; wrap-schema-errors
+      ;; ring.swagger.middleware/catch-validation-errors
+      ;; ring.middleware.http-response/catch-response
       ))
 
-(defrecord WebServer [ring is-dev?]
+(defrecord WebServer [ring is-dev? slack-url]
   component/Lifecycle
   (start [component]
-    (init)
-    (let [app (cond-> (make-handler is-dev?)
-                      is-dev? (prone/wrap-exceptions
-                               {:app-namespaces ["react-tutorial-om"]}))]
+    (let [db (atom {})
+          db-file "results.edn"
+          file-agent (agent nil :error-handler println)
+          _ (init! db "results.edn")
+          app (make-handler is-dev? db slack-url)]
+      (add-watch db :writer (fn [_ _ _ new]
+                              (send-off file-agent (fn [_] (spit-edn-file db-file new)))))
+      #_(when is-dev?
+          (inspect/start))
       (assoc component
-        :server
-        (ring.adapter.jetty/run-jetty app ring))))
+             :server
+             (ring.adapter.jetty/run-jetty app ring)
+             :file-agent file-agent
+             :db db)))
   (stop [component]
+    #_(when is-dev?
+        (inspect/stop))
     (when-let [server (:server component)]
       (.stop server))
     (assoc component :server nil)))
