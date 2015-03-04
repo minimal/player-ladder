@@ -17,7 +17,7 @@
             [cljs-http.client :as http]
             [figwheel.client :as fw :include-macros true]
             [weasel.repl :as weasel]
-            [clairvoyant.core :as trace :include-macros true]
+            ;; [clairvoyant.core :as trace :include-macros true]
             [clojure.string :as str]
             ;; [omdev.core :as omdev]
             [react-tutorial-om.utils :refer [guid]])
@@ -362,8 +362,8 @@
        (dom/h3 nil "Rankings")
        (om/build ranking-list (:rankings app) {:opts opts})))))
 
-(defcomponentk league-row [[:data team wins loses points matches for against diff] :- (schema/cursor LeagueRanking)
-                           owner opts]
+(defcomponent league-row [{:keys [team wins loses points matches for against diff]} ;;:- (schema/cursor LeagueRanking)
+                          owner opts]
   (render
    [_]
    (logm matches)
@@ -509,7 +509,7 @@
       )))
 
 
-(defcomponentk leagues-page-view [[:data leagues path :as data] owner opts]
+(defcomponent leagues-page-view [{:keys [leagues path] :as data} owner opts]
   (render-state
    [this state]
    ;; (println leagues data owner)
@@ -536,7 +536,7 @@
    (prn "will mount leagues")
    (logm  opts)
    (go (while (om/get-state owner :mounted)
-         (logm :polling)
+         ;; (logm :polling)
          (fetch-leagues data opts)
          (<! (timeout (or  (:poll-interval opts) 5000))))))
   (will-unmount
@@ -576,19 +576,19 @@
      :leagues (om/build leagues-page-view app)
      :ladder (om/build ladder-app app)
      :about (om/build about-page-view app)
-     (do (logm "unkown path " view)
+     (do (logm "unknown path " view)
          (om/build ladder-app app))))
 
   (will-mount
    [_]
    (logm "starting top-level")
    (go (loop []
-         (when-let [[view path] (<! nav-ch)]
-           (logm view)
-           (logm path)
+         (when-let [[view' path'] (<! nav-ch)]
+           (logm view')
+           (logm path')
            (om/transact! app #(assoc %
-                                :view view
-                                :path path))
+                                     :view view'
+                                     :path path'))
            (recur))))))
 
 (defn run-top-level []
