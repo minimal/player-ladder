@@ -4,6 +4,7 @@
 
   :source-paths ["src/clj" "src/cljs" "target/classes"]
   :dependencies [[clj-time "0.8.0"]
+                 [clj-http "1.0.1"]
                  [cljs-http "0.1.23"]
                  [com.matthiasnehlsen/inspect "0.1.5"]
                  [com.stuartsierra/component "0.2.3"]

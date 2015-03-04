@@ -1,9 +1,11 @@
 (ns react-tutorial-om.core
-  (:require [clj-time.coerce :refer [from-date from-string]]
+  (:require [clj-http.client :as client]
+            [clj-time.coerce :refer [from-date from-string]]
             [clj-time.core :as time]
             [clojure.edn :as edn]
             [clojure.java.io :as io]
             [clojure.pprint :refer [pprint]]
+            [clojure.string :as str]
             [compojure.api.routes :refer [with-routes]]
             [compojure.api.sweet
              :refer
@@ -15,8 +17,8 @@
             [prone.debug :refer [debug]]
             [prone.middleware :as prone]
             [ranking-algorithms.core :as rank]
-            [react-tutorial-om.schemas :as sch]
             [react-tutorial-om.ranking :as ranking]
+            [react-tutorial-om.schemas :as sch]
             ring.adapter.jetty
             [ring.middleware.format :refer [wrap-restful-format]]
             [ring.util.http-response :as http-resp :refer [ok]]
@@ -194,11 +196,23 @@
 (defn handle-league-result
   "Given an db atom, a league name and a result update the schedule and
   matches for the league and write out to file. Return the resulting
-  state. TODO: pure update function"
-  [db league result]
-  (swap! db (partial update-league-result result league)))
+  state. Also post to slack if possible."
+  [db league {:keys [winner loser winner-score loser-score] :as result} slack-url]
+  (swap! db (partial update-league-result result league))
+  (when-not (str/blank? slack-url)
+    (future
+      (try+
+       (client/post slack-url
+                    {:form-params {:text (format "%s wins against %s in league %s: %s - %s"
+                                                 winner loser (name league) winner-score loser-score)}
+                     :content-type :json})
+       (catch [:status 403] {:keys [request-time headers body]}
+         (println "Slack 403 " request-time headers))
+       (catch Object _
+         (println (:throwable &throw-context) "unexpected error")))))
+  {:message "ok"})
 
-(defn make-routes [is-dev? db]
+(defn make-routes [is-dev? db slack-url]
   (with-routes
     (route/resources "/")
     (route/resources "/react" {:root "react"})
@@ -244,7 +258,7 @@
                                       :name name}]))}))
       (POST* "/:league/result" [league] ;TODO: take id in post url?
              :body [result sch/LeagueResult]
-             (ok (handle-league-result db (keyword league) result)))))
+             (ok (handle-league-result db (keyword league) result slack-url)))))
     (route/not-found "Page not found")))
 
 (defn wrap-schema-errors [handler]
@@ -262,8 +276,8 @@
       #_(println res)
       res)))
 
-(defn make-handler [is-dev? db]
-  (-> (make-routes is-dev? db)
+(defn make-handler [is-dev? db slack-url]
+  (-> (make-routes is-dev? db slack-url)
       ;; log-request-middleware
 
       (cond-> is-dev? (prone/wrap-exceptions
@@ -279,14 +293,14 @@
       ;; ring.middleware.http-response/catch-response
       ))
 
-(defrecord WebServer [ring is-dev?]
+(defrecord WebServer [ring is-dev? slack-url]
   component/Lifecycle
   (start [component]
     (let [db (atom {})
           db-file "results.edn"
           file-agent (agent nil :error-handler println)
           _ (init! db "results.edn")
-          app (make-handler is-dev? db)]
+          app (make-handler is-dev? db slack-url)]
       (add-watch db :writer (fn [_ _ _ new]
                               (send-off file-agent (fn [_] (spit-edn-file db-file new)))))
       #_(when is-dev?

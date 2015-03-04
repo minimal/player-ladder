@@ -44,7 +44,7 @@
   (-> response :body (transit/reader :json) transit/read))
 
 (deftest test-app
-  (let [app (make-handler false (atom {}))
+  (let [app (make-handler false (atom {}) nil)
         response (-> (request :get "/rankings")
                    transit-header
                    app)
