@@ -17,7 +17,7 @@
             [reloaded.repl :refer [system init start stop go reset]]
             [weasel.repl.websocket :as weasel]))
 
-(reloaded.repl/set-init! #(system/make-system true))
+(reloaded.repl/set-init! #(system/make-system true "results.edn"))
 
 (defn browser-repl []
   (let [repl-env (weasel/repl-env :ip "0.0.0.0" :port 9001)]

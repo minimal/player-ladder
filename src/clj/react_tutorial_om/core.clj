@@ -293,13 +293,12 @@
       ;; ring.middleware.http-response/catch-response
       ))
 
-(defrecord WebServer [ring is-dev? slack-url]
+(defrecord WebServer [ring is-dev? slack-url db-file]
   component/Lifecycle
   (start [component]
     (let [db (atom {})
-          db-file "results.edn"
           file-agent (agent nil :error-handler println)
-          _ (init! db "results.edn")
+          _ (init! db db-file)
           app (make-handler is-dev? db slack-url)]
       (add-watch db :writer (fn [_ _ _ new]
                               (send-off file-agent (fn [_] (spit-edn-file db-file new)))))
