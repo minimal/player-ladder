@@ -100,8 +100,7 @@
                                                         "/leagues"
                                                         {:accept "application/transit+json"}))]
         (when success
-          (om/update!
-           app [:leagues] (:leagues body))))))
+          (om/update! app (:leagues body))))))
 
 
 (defn- value-from-node
@@ -169,9 +168,11 @@
 (defn save-league-match!
   "Post league result"
   [match app opts]
-  ;; TODO: update app state as well, check result
   (go (let [res (<! (http/post (:url opts) {:transit-params match}))]
-        (prn (:message res)))))
+        (when (:success res)
+          (logm "saved league:" res)
+          (fetch-leagues app opts))
+        res)))
 
 (defn handle-league-result-submit
   [e app owner opts {:keys [home-score away-score home away name id round]
@@ -537,7 +538,7 @@
    (logm  opts)
    (go (while (om/get-state owner :mounted)
          ;; (logm :polling)
-         (fetch-leagues data opts)
+         (fetch-leagues leagues opts)
          (<! (timeout (or  (:poll-interval opts) 5000))))))
   (will-unmount
    [_]
