@@ -36,16 +36,11 @@
   [is-dev?]
   [:body] (if is-dev? inject-devmode-html identity))
 
-(defn recent? [date & [now]]
-  (if (nil? date)
-    false
-    (let [joda-date (or (from-string date) (from-date date))
-          offset (time/weeks 4)
-          now (or now (time/now))]
-      (if (nil? joda-date)
-        false
-        (time/after? joda-date
-                     (time/minus now offset))))))
+(defn recent? [date & [now weeks]]
+  (boolean (some-> date
+                   (#(or (from-string %) (from-date %)))
+                   (time/after? (time/minus (or now (time/now))
+                                            (time/weeks (or weeks 20)))))))
 
 (defn load-edn-file [file]
   (-> (slurp file)

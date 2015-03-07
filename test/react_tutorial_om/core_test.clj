@@ -18,7 +18,7 @@
 (deftest date-funcs
   (testing "recent"
     (let [now (from-date #inst "2014-03-01")]
-      (are [expected input] (= expected (recent? input now))
+      (are [expected input] (= expected (recent? input now 4))
            true "2014-02-20T17:27:07Z"
            false "2014-01-20T17:27:07Z"
            true "2014-02-20"
