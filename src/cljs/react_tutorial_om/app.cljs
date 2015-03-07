@@ -630,7 +630,6 @@
         .-location
         (set! "#/"))))
 
-(run-top-level)
 (def is-dev (.contains (.. js/document -body -classList) "is-dev"))
 
 (defonce last-hash (atom ""))
@@ -638,8 +637,10 @@
 (defn get-hash []
   (-> js/document
       .-location
-      .-hash
-      #_(clojure.string/replace-first  "#/" "")))
+      .-hash))
+
+(sec/dispatch! (get-hash))
+(run-top-level)
 
 (defn run-refresh []
   (let [root (get-hash)]
