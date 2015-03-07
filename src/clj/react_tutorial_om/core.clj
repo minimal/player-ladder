@@ -27,10 +27,9 @@
 
 (def inject-devmode-html
   (comp
-     (set-attr :class "is-dev")
-     (prepend (html [:script {:type "text/javascript" :src "/js/out/goog/base.js"}]))
-     ;; (prepend (html [:script {:type "text/javascript" :src "/react/react.js"}]))
-     (append  (html [:script {:type "text/javascript"} "goog.require('react_tutorial_om.app')"]))))
+   (set-attr :class "is-dev")
+   (prepend (html [:script {:type "text/javascript" :src "/js/out/goog/base.js"}]))
+   (append  (html [:script {:type "text/javascript"} "goog.require('react_tutorial_om.app')"]))))
 
 (deftemplate page (io/resource "public/index.html")
   [is-dev?]
@@ -129,14 +128,11 @@
       (println "Error in suggest oponent" e)
       "")))
 
-(defn- vectorise-names [rankings]
-  (vec (map :team rankings)))
-
 (defn attach-suggested-opponents
   [rankings]
-  (let [vec-ranks (vectorise-names rankings)]
+  (let [vec-ranks (mapv :team rankings)]
     (for [rank rankings]
-      (assoc-in rank [:suggest] (suggest-opponent rank vec-ranks)))))
+      (assoc rank :suggest (suggest-opponent rank vec-ranks)))))
 
 (defn attach-uniques [rankings]
   (for [rank rankings]
@@ -169,8 +165,8 @@
                    (attach-player-matches results)
                    attach-suggested-opponents
                    attach-uniques
-                   #_(filter (fn [{matches :matches}]
-                               (recent? (:date (last matches)))))
+                   (filter (fn [{matches :matches}]
+                             (recent? (:date (last matches)))))
                    #_(filter (fn [{:keys [loses wins]}] (> (+ loses wins) 4)))
                    ((fn [col] (if (> (count col) 5)
                                (drop-last 2 col)
