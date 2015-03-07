@@ -322,7 +322,7 @@
                    (dom/span #js {:onClick (fn [e] (put! select-player-ch team))
                                   :style #js {:cursor "pointer"}}
                              team)
-                   ranking wins loses (.toFixed (/ wins loses) 2) suggest
+                   ranking (.toFixed (/ wins loses) 2) suggest
                    (om/build last-10-games (:matches fields))])))))
 
 (defn ranking-list [rankings owner opts]
@@ -331,7 +331,7 @@
               (dom/thead nil
                          (apply dom/tr nil
                                 (map #(dom/th nil %)
-                                     ["" "team" "ranking" "w" "l" "w/l"
+                                     ["" "team" "ranking" "w/l"
                                       "suggested opponent" "last 10 games"])))
               (apply
                dom/tbody nil
@@ -367,7 +367,7 @@
                           owner opts]
   (render
    [_]
-   (logm matches)
+   ;; (logm matches)
    (html [:tr
           [:td ""]
           [:td team]
@@ -415,7 +415,7 @@
 (defcomponent league-schedule [{:keys [name schedule]} owner opts]
   (render
    [_]
-   (logm schedule)
+   ;; (logm schedule)
    (html
     [:div
      [:h4.subheader "Schedule"]
@@ -428,7 +428,7 @@
    {:mounted false})
   (render
    [_]
-   (logm league)
+   ;; (logm league)
    (html
     [:div
      [:h3 (:name league)]
