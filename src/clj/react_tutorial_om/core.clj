@@ -25,6 +25,8 @@
             [schema.core :as s]
             [slingshot.slingshot :refer [throw+ try+]]))
 
+(def archived-teams #{"jons" "cliff" "sina" "jamie" "michael" "michal"})
+
 (def inject-devmode-html
   (comp
    (set-attr :class "is-dev")
@@ -123,7 +125,7 @@
                               (zipmap oppnames-set (repeat 0)) ;; Start at 0
                               matchfreqs)
           sorted-totals (sort-by second near-totals)]
-      (ffirst sorted-totals))
+      (ffirst (remove #(archived-teams (first %)) sorted-totals)))
     (catch IndexOutOfBoundsException e
       (println "Error in suggest oponent" e)
       "")))
