@@ -285,8 +285,8 @@
                         :skip-prone? (fn [{:keys [headers]}]
                                        (println headers)
                                        (contains? headers "postman-token"))}))
-      compojure.api.middleware/api-middleware
-      (wrap-restful-format :formats  [:json :transit-json])
+      ;; compojure.api.middleware/api-middleware
+      (wrap-restful-format {:formats [:json :transit-json]})
 
       ;; wrap-schema-errors
       ;; ring.swagger.middleware/catch-validation-errors
