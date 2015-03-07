@@ -1,5 +1,7 @@
 language: clojure
-lein: lein2
+script:
+  - lein test
+  - lein expectations
 before_install:
 #   - git submodule update checkouts/ranking-algorithms
   - cd checkouts/ranking-algorithms

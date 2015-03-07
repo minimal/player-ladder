@@ -1,6 +1,6 @@
 (ns react-tutorial-om.core
   (:require [clj-http.client :as client]
-            [clj-time.coerce :refer [from-date from-string]]
+            [clj-time.coerce :refer [from-date from-string to-timestamp]]
             [clj-time.core :as time]
             [clojure.edn :as edn]
             [clojure.java.io :as io]
@@ -185,7 +185,7 @@
       (update-in [:leagues league :schedule]
                  (fn [sch] (remove #(= (:id %) (:id result)) sch)))
       (update-in [:leagues league :matches]
-                 conj (assoc result :date (java.util.Date.)))
+                 conj (assoc result :date (to-timestamp (time/now))))
       ((partial update-ladder-results (dissoc result :id :round)))))
 
 (defn handle-league-result

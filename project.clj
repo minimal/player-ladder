@@ -37,6 +37,7 @@
 
   :plugins [[lein-cljsbuild "1.0.5"]
             [lein-environ "1.0.0"]
+            [lein-expectations "0.0.8"]
             [lein-figwheel "0.2.5-SNAPSHOT"]]
 
   ;; :jvm-opts ["-agentlib:jdwp=transport=dt_socket,server=y,suspend=n"]
