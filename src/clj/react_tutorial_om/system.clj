@@ -3,7 +3,7 @@
             [com.stuartsierra.component :as component])
   (:gen-class))
 
-(defn make-system [is-dev? db-file & [slack-url]]
+(defn make-system [{:keys [is-dev? db-file slack-url]}]
   (component/system-map
    :webserver (core/new-webserver {:ring {:port 3000 :join? false}
                                    :slack-url slack-url
@@ -11,5 +11,7 @@
                                    :is-dev? is-dev?})))
 
 (defn -main
-  [[file & args]]
-  (component/start (make-system false file)))
+  [[file & [slack-url]]]
+  (component/start (make-system {:is-dev? false
+                                 :db-file file
+                                 :slack-url slack-url})))
