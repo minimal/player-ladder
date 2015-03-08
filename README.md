@@ -23,28 +23,25 @@ Install submodules
 
     cd checkouts/ranking-algorithms
     lein install
-
-    cd ../ring-middleware-format
-    lein install
-
     cd ../..
 
-Compile with figwheel with auto browser refresh:
 
-    lein figwheel
+Run server and figwheel
 
-
-Or with cljsbuild Compile js
-
-    lein cljsbuild once dev
-    # or for development
-    lein cljsbuild auto dev
-
-
-Run server
     lein repl
     (go)
+    (start-figwheel)
+    
+Browser repl
+
+    lein repl :connect
+    (browser-repl)
 
 Point Browser to
 
-    http://localhost:3000
+    http://localhost:3000/app
+    
+Uberjar
+
+    lein uberjar
+    java -jar react-tutorial-om-0.1.0-SNAPSHOT-standalone.jar results.edn
