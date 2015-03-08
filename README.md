@@ -1,6 +1,6 @@
 player-ladder-om
 =================
-
+[![Build Status](https://travis-ci.org/minimal/player-ladder.svg?branch=master)](https://travis-ci.org/minimal/player-ladder)
 [![Dependencies Status](http://jarkeeper.com/minimal/player-ladder/status.svg)](http://jarkeeper.com/minimal/player-ladder)
 
 A player ladder for any 1v1 game (e.g. table tennis).
