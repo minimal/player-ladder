@@ -2,6 +2,7 @@
   (:require [clj-time.coerce :refer [from-date from-string to-timestamp]]
             [clj-time.core :as time]
             [clojure.data.json :as json]
+            [clojure.template :refer [do-template]]
             [cognitect.transit :as transit]
             [expectations :refer :all]
             [react-tutorial-om.core :refer :all]
@@ -10,10 +11,33 @@
             [ring.mock.request :refer :all]
             [schema.core :as s]))
 
+;; recent
+(do-template [expected input]
+  (expect expected
+          (recent? input (from-date #inst "2014-03-01") 4))
+  true "2014-02-20T17:27:07Z"
+  false "2014-01-20T17:27:07Z"
+  true "2014-02-20"
+  true #inst "2014-02-20"
+  false #inst "2014-01-20T17:27:07Z"
+  false nil)
+
+;; suggesting
 (expect '(3 4 0 1) (normalise-indexes 5 2 [3 4 0 1]))
 (expect '(4 3 1 2) (normalise-indexes 10 2 [-2 -1 1 2]))
 (expect '(7 8 5 6) (normalise-indexes 10 2 [7 8 10 11]))
 
+(expect [{:loses 0, :draw 0, :wins 2, :rank 1, :team "arsenal", :ranking 1230.53, :rd nil, :round nil}
+         {:loses 0, :draw 0, :wins 1, :rank 2, :team "winners", :ranking 1216.0, :rd nil, :round nil}
+         {:loses 1, :draw 0, :wins 0, :rank 3, :team "losers", :ranking 1184.0, :rd nil, :round nil}
+         {:loses 2, :draw 0, :wins 0, :rank 4, :team "chelsea", :ranking 1169.47, :rd nil, :round nil}]
+
+        (calc-ranking-data [{:home "winners", :home_score 10, :away "losers", :away_score 0, :date nil}
+                            {:home "arsenal", :home_score 3, :away "chelsea", :away_score 0, :date nil}
+                            {:home "arsenal", :home_score 2, :away "chelsea", :away_score 0, :date nil}]))
+
+
+;; league ranks
 (expect [{:team "chris",
           :loses 1,
           :wins 1,

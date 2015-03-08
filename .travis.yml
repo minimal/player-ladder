@@ -1,6 +1,5 @@
 language: clojure
 script:
-  - lein test
   - lein expectations
   - lein with-profile -dev,+uberjar cljsbuild once
 before_install:
