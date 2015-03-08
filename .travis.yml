@@ -1,8 +1,9 @@
 language: clojure
-lein: lein2
+script:
+  - lein expectations
+  - lein with-profile -dev,+uberjar cljsbuild once
 before_install:
 #   - git submodule update checkouts/ranking-algorithms
   - cd checkouts/ranking-algorithms
   - lein install
   - cd ../..
-  - lein with-profile -dev,+uberjar cljsbuild once

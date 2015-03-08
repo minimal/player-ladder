@@ -82,9 +82,12 @@
                         :schedule [LeagueScheduleMatch]
                         :name s/Str}}})
 
+(s/defschema LeagueStorage
+  {s/Keyword {:matches [Result]
+              :schedule [LeagueScheduleMatch]
+              :name s/Str}})
+
 (s/defschema AllResults
   "Results as stored in edn file"
   {:singles-ladder [Result]
-   (s/optional-key :leagues) {s/Keyword {:matches [Result]
-                                         :schedule [LeagueScheduleMatch]
-                                         :name s/Str}}})
+   (s/optional-key :leagues) LeagueStorage})

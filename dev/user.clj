@@ -17,12 +17,12 @@
             [reloaded.repl :refer [system init start stop go reset]]
             [weasel.repl.websocket :as weasel]))
 
-(reloaded.repl/set-init! #(system/make-system true))
+(reloaded.repl/set-init! #(system/make-system {:is-dev? true :db-file "results.edn"}))
 
 (defn browser-repl []
   (let [repl-env (weasel/repl-env :ip "0.0.0.0" :port 9001)]
     (piggieback/cljs-repl :repl-env repl-env)
-    (piggieback/cljs-eval repl-env '(in-ns 'react-tutorial-om.core) {})))
+    (piggieback/cljs-eval {} repl-env '(in-ns 'react-tutorial-om.core) {})))
 
 (defonce fig-server (atom nil))
 (defonce fig-builder (atom nil))

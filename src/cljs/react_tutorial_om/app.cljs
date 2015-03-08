@@ -100,8 +100,7 @@
                                                         "/leagues"
                                                         {:accept "application/transit+json"}))]
         (when success
-          (om/update!
-           app [:leagues] (:leagues body))))))
+          (om/update! app (:leagues body))))))
 
 
 (defn- value-from-node
@@ -169,9 +168,11 @@
 (defn save-league-match!
   "Post league result"
   [match app opts]
-  ;; TODO: update app state as well, check result
   (go (let [res (<! (http/post (:url opts) {:transit-params match}))]
-        (prn (:message res)))))
+        (when (:success res)
+          (logm "saved league:" res)
+          (fetch-leagues app opts))
+        res)))
 
 (defn handle-league-result-submit
   [e app owner opts {:keys [home-score away-score home away name id round]
@@ -321,7 +322,7 @@
                    (dom/span #js {:onClick (fn [e] (put! select-player-ch team))
                                   :style #js {:cursor "pointer"}}
                              team)
-                   ranking wins loses (.toFixed (/ wins loses) 2) suggest
+                   ranking (.toFixed (/ wins loses) 2) suggest
                    (om/build last-10-games (:matches fields))])))))
 
 (defn ranking-list [rankings owner opts]
@@ -330,7 +331,7 @@
               (dom/thead nil
                          (apply dom/tr nil
                                 (map #(dom/th nil %)
-                                     ["" "team" "ranking" "w" "l" "w/l"
+                                     ["" "team" "ranking" "w/l"
                                       "suggested opponent" "last 10 games"])))
               (apply
                dom/tbody nil
@@ -366,7 +367,7 @@
                           owner opts]
   (render
    [_]
-   (logm matches)
+   ;; (logm matches)
    (html [:tr
           [:td ""]
           [:td team]
@@ -414,7 +415,7 @@
 (defcomponent league-schedule [{:keys [name schedule]} owner opts]
   (render
    [_]
-   (logm schedule)
+   ;; (logm schedule)
    (html
     [:div
      [:h4.subheader "Schedule"]
@@ -427,7 +428,7 @@
    {:mounted false})
   (render
    [_]
-   (logm league)
+   ;; (logm league)
    (html
     [:div
      [:h3 (:name league)]
@@ -537,7 +538,7 @@
    (logm  opts)
    (go (while (om/get-state owner :mounted)
          ;; (logm :polling)
-         (fetch-leagues data opts)
+         (fetch-leagues leagues opts)
          (<! (timeout (or  (:poll-interval opts) 5000))))))
   (will-unmount
    [_]
@@ -630,7 +631,6 @@
         .-location
         (set! "#/"))))
 
-(run-top-level)
 (def is-dev (.contains (.. js/document -body -classList) "is-dev"))
 
 (defonce last-hash (atom ""))
@@ -638,8 +638,10 @@
 (defn get-hash []
   (-> js/document
       .-location
-      .-hash
-      #_(clojure.string/replace-first  "#/" "")))
+      .-hash))
+
+(sec/dispatch! (get-hash))
+(run-top-level)
 
 (defn run-refresh []
   (let [root (get-hash)]

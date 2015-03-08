@@ -1,6 +1,6 @@
 (ns react-tutorial-om.core
   (:require [clj-http.client :as client]
-            [clj-time.coerce :refer [from-date from-string]]
+            [clj-time.coerce :refer [from-date from-string to-timestamp]]
             [clj-time.core :as time]
             [clojure.edn :as edn]
             [clojure.java.io :as io]
@@ -25,27 +25,23 @@
             [schema.core :as s]
             [slingshot.slingshot :refer [throw+ try+]]))
 
+(def archived-teams #{"jons" "cliff" "sina" "jamie" "michael" "michal"})
+
 (def inject-devmode-html
   (comp
-     (set-attr :class "is-dev")
-     (prepend (html [:script {:type "text/javascript" :src "/js/out/goog/base.js"}]))
-     ;; (prepend (html [:script {:type "text/javascript" :src "/react/react.js"}]))
-     (append  (html [:script {:type "text/javascript"} "goog.require('react_tutorial_om.app')"]))))
+   (set-attr :class "is-dev")
+   (prepend (html [:script {:type "text/javascript" :src "/js/out/goog/base.js"}]))
+   (append  (html [:script {:type "text/javascript"} "goog.require('react_tutorial_om.app')"]))))
 
 (deftemplate page (io/resource "public/index.html")
   [is-dev?]
   [:body] (if is-dev? inject-devmode-html identity))
 
-(defn recent? [date & [now]]
-  (if (nil? date)
-    false
-    (let [joda-date (or (from-string date) (from-date date))
-          offset (time/weeks 4)
-          now (or now (time/now))]
-      (if (nil? joda-date)
-        false
-        (time/after? joda-date
-                     (time/minus now offset))))))
+(defn recent? [date & [now weeks]]
+  (boolean (some-> date
+                   (#(or (from-string %) (from-date %)))
+                   (time/after? (time/minus (or now (time/now))
+                                            (time/weeks (or weeks 20)))))))
 
 (defn load-edn-file [file]
   (-> (slurp file)
@@ -129,19 +125,16 @@
                               (zipmap oppnames-set (repeat 0)) ;; Start at 0
                               matchfreqs)
           sorted-totals (sort-by second near-totals)]
-      (ffirst sorted-totals))
+      (ffirst (remove #(archived-teams (first %)) sorted-totals)))
     (catch IndexOutOfBoundsException e
       (println "Error in suggest oponent" e)
       "")))
 
-(defn- vectorise-names [rankings]
-  (vec (map :team rankings)))
-
 (defn attach-suggested-opponents
   [rankings]
-  (let [vec-ranks (vectorise-names rankings)]
+  (let [vec-ranks (mapv :team rankings)]
     (for [rank rankings]
-      (assoc-in rank [:suggest] (suggest-opponent rank vec-ranks)))))
+      (assoc rank :suggest (suggest-opponent rank vec-ranks)))))
 
 (defn attach-uniques [rankings]
   (for [rank rankings]
@@ -174,8 +167,8 @@
                    (attach-player-matches results)
                    attach-suggested-opponents
                    attach-uniques
-                   #_(filter (fn [{matches :matches}]
-                               (recent? (:date (last matches)))))
+                   (filter (fn [{matches :matches}]
+                             (recent? (:date (last matches)))))
                    #_(filter (fn [{:keys [loses wins]}] (> (+ loses wins) 4)))
                    ((fn [col] (if (> (count col) 5)
                                (drop-last 2 col)
@@ -190,7 +183,7 @@
       (update-in [:leagues league :schedule]
                  (fn [sch] (remove #(= (:id %) (:id result)) sch)))
       (update-in [:leagues league :matches]
-                 conj (assoc result :date (java.util.Date.)))
+                 conj (assoc result :date (to-timestamp (time/now))))
       ((partial update-ladder-results (dissoc result :id :round)))))
 
 (defn handle-league-result
@@ -285,21 +278,20 @@
                         :skip-prone? (fn [{:keys [headers]}]
                                        (println headers)
                                        (contains? headers "postman-token"))}))
-      compojure.api.middleware/api-middleware
-      (wrap-restful-format :formats  [:json :transit-json])
+      ;; compojure.api.middleware/api-middleware
+      (wrap-restful-format {:formats [:json :transit-json]})
 
       ;; wrap-schema-errors
       ;; ring.swagger.middleware/catch-validation-errors
       ;; ring.middleware.http-response/catch-response
       ))
 
-(defrecord WebServer [ring is-dev? slack-url]
+(defrecord WebServer [ring is-dev? slack-url db-file]
   component/Lifecycle
   (start [component]
     (let [db (atom {})
-          db-file "results.edn"
           file-agent (agent nil :error-handler println)
-          _ (init! db "results.edn")
+          _ (init! db db-file)
           app (make-handler is-dev? db slack-url)]
       (add-watch db :writer (fn [_ _ _ new]
                               (send-off file-agent (fn [_] (spit-edn-file db-file new)))))

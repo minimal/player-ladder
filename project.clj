@@ -3,27 +3,27 @@
   :url "http://example.com/FIXME"
 
   :source-paths ["src/clj" "src/cljs" "target/classes"]
-  :dependencies [[clj-time "0.8.0"]
+  :dependencies [[clj-time "0.9.0"]
                  [clj-http "1.0.1"]
-                 [cljs-http "0.1.23"]
-                 [com.matthiasnehlsen/inspect "0.1.5"]
+                 [cljs-http "0.1.27"]
+                 [com.matthiasnehlsen/inspect "0.1.11"]
                  [com.stuartsierra/component "0.2.3"]
                  [compojure "1.3.2"]
                  [enlive "1.1.5"]
                  [environ "1.0.0"]
-                 [metosin/compojure-api "0.16.6" :exclude [ring-middleware-format]]
+                 [metosin/compojure-api "0.18.0" :exclude [ring-middleware-format prismatic/plumbing]]
                  [org.omcljs/om "0.8.8"]
                  [org.clojure/clojure "1.6.0"]
                  [org.clojure/clojurescript "0.0-2913"]
                  [org.clojure/core.async "0.1.346.0-17112a-alpha"]
-                 [org.clojure/tools.reader "0.8.14"]
+                 [org.clojure/tools.reader "0.8.16"]
                  [prismatic/om-tools "0.3.10"]
                  [prismatic/schema "0.3.7"]
                  [prone "0.8.1"]
                  [figwheel "0.2.2-SNAPSHOT"]
                  [ranking-algorithms "0.1.0-SNAPSHOT"]
                  [ring "1.3.2"]
-                 [metosin/ring-middleware-format "0.5.0"]
+                 [metosin/ring-middleware-format "0.6.0"]
                  [ring/ring-core "1.3.2"]
                  [ring/ring-defaults "0.1.4"]
                  [sablono "0.3.4"]
@@ -37,8 +37,11 @@
 
   :plugins [[lein-cljsbuild "1.0.5"]
             [lein-environ "1.0.0"]
+            [lein-expectations "0.0.8"]
             [lein-figwheel "0.2.2-SNAPSHOT"]]
 
+  :clean-targets ^{:protect false} ["resources/public/js/app.js"
+                                    "resources/public/js/out"]
   ;; :jvm-opts ["-agentlib:jdwp=transport=dt_socket,server=y,suspend=n"]
 
   :profiles {:dev {:dependencies [[javax.servlet/servlet-api "2.5"]
@@ -77,6 +80,7 @@
                                         :preamble ["react/react.min.js"]
                                         :externs ["react/externs/react.js"]
                                         :optimizations :none
+                                        :cache-analysis true
                                         :pretty-print  true}}}}
 
   )
