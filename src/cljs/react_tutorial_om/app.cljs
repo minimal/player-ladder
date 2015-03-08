@@ -1,8 +1,6 @@
-(ns react-tutorial-om.app
-  (:require-macros [cljs.core.async.macros :refer [go alt!]]
-                   ;; #_[secretary.macros :refer [defroute]]
-                   [react-tutorial-om.utils :refer [logm]]
-                   )
+(ns ^:figwheel-load
+  react-tutorial-om.app
+  (:require-macros [cljs.core.async.macros :refer [go alt!]])
   (:require [goog.events :as events]
             [cljs.core.async :as async :refer [put! <! >! chan timeout]]
             [om.core :as om :include-macros true]
@@ -20,7 +18,7 @@
             ;; [clairvoyant.core :as trace :include-macros true]
             [clojure.string :as str]
             ;; [omdev.core :as omdev]
-            [react-tutorial-om.utils :refer [guid]])
+            [react-tutorial-om.utils :refer [guid] :refer-macros [logm]])
   (:import [goog History]))
 
 (enable-console-print!)
@@ -260,8 +258,7 @@
        #js {:className "commentBox"}
        (dom/h3 nil "Results (most recent first)")
        (om/build comment-form app {:opts opts})
-       (om/build comment-list app)
-       ))))
+       (om/build comment-list app)))))
 
 (defn last-10-games [results owner]
   (om/component
@@ -275,7 +272,7 @@
                                         " against " (:opposition %)
                                         " @ " (:date %)))))
                (->> results
-                 (take-last 10))))))
+                    (take-last 10))))))
 
 
 (defn player-summary
@@ -440,13 +437,10 @@
        (om/build-all league-row (:rankings league))]]
      (om/build league-schedule {:name (:name league) :schedule (:schedule league)})])))
 
-(defn status-box [conn? owner]
-  (reify
-    om/IRender
-    (render [this]
-      (dom/div #js {:className "alert-box warning radius"
-                    :style (display (not conn?))}
-               "Connection problem!"))))
+(defcomponent status-box [conn? owner]
+  (render [_]
+          (html [:.alert-box.warning.radius {:style (display (not conn?))}
+                 "Connection problem!"])))
 
 (defcomponent navigation-view [_ _]
   (render
@@ -506,8 +500,7 @@
                                   (filter #(= (:team %)
                                               (get-in app [:player-view :player]))
                                           (:rankings app)))
-                          :display (get-in app [:player-view :display])})))
-      )))
+                          :display (get-in app [:player-view :display])}))))))
 
 
 (defcomponent leagues-page-view [{:keys [leagues path] :as data} owner opts]
@@ -553,8 +546,7 @@
             (dom/div #js {:className "large-7 columns"}
                      (om/build navigation-view {})
                      (tdom/div nil (tdom/a {:href "https://github.com/minimal/player-ladder"}
-                                           "Fork me on Github"))
-                     )
+                                           "Fork me on Github")))
             (dom/div #js {:className "large-3 columns" :dangerouslySetInnerHTML #js {:__html "&nbsp;"}}))))
 
 (defn leagues []
