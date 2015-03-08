@@ -116,8 +116,9 @@
           allopps  (->> (concat opps1 opps2)
                         (normalise-indexes (count ranks) offset))
           oppnames-set (set (map ranks allopps))
-          matchfreqs (frequencies (filter #(contains? oppnames-set %)
-                                          (map :opposition matches)))
+          matchfreqs (frequencies (sequence (comp (map :opposition)
+                                                  (filter #(contains? oppnames-set %)))
+                                            matches))
           near-totals (reduce (fn [acc [k v]] (assoc acc k v))
                               (zipmap oppnames-set (repeat 0)) ;; Start at 0
                               matchfreqs)
@@ -135,11 +136,11 @@
 
 (defn attach-uniques [rankings]
   (for [rank rankings]
-    (->> rank
-         :matches
-         (filter (fn [x] (> (:for x) (:against x))))
-         (map :opposition)
-         (into #{})
+    (->> (into #{}
+               (comp
+                (filter (fn [x] (> (:for x) (:against x))))
+                (map :opposition))
+               (:matches rank))
          count
          (assoc-in rank [:u-wins]))))
 

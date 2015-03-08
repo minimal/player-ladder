@@ -13,7 +13,7 @@
                  [environ "1.0.0"]
                  [metosin/compojure-api "0.18.0" :exclude [ring-middleware-format prismatic/plumbing]]
                  [org.omcljs/om "0.8.8"]
-                 [org.clojure/clojure "1.6.0"]
+                 [org.clojure/clojure "1.7.0-alpha5"]
                  [org.clojure/clojurescript "0.0-2913"]
                  [org.clojure/core.async "0.1.346.0-17112a-alpha"]
                  [org.clojure/tools.reader "0.8.16"]
