@@ -16,7 +16,6 @@
             [net.cgrand.enlive-html :refer [append deftemplate html prepend set-attr]]
             [prone.debug :refer [debug]]
             [prone.middleware :as prone]
-            [ranking-algorithms.core :as rank]
             [react-tutorial-om.ranking :as ranking]
             [react-tutorial-om.schemas :as sch]
             ring.adapter.jetty
@@ -77,21 +76,19 @@
 
 (defn translate-keys [{:keys [winner winner-score loser loser-score date]}]
   {:home winner
-   :home_score winner-score
+   :home-score winner-score
    :away loser
-   :away_score loser-score
+   :away-score loser-score
    :date date})
 
 (defn calc-ranking-data [matches]
   (map-indexed
-   (partial rank/format-for-printing matches)
-   (rank/top-teams 30 matches)
-   #_(do (prn (rank/top-glicko-teams 30 matches))
-         (rank/top-glicko-teams 30 matches {}))))
+   (partial ranking/format-for-printing matches)
+   (ranking/top-teams 30 matches)))
 
 (defn attach-player-matches [results rankings]
   (for [rank rankings]
-    (assoc-in rank [:matches] (rank/show-matches (:team rank) results))))
+    (assoc-in rank [:matches] (ranking/show-matches (:team rank) results))))
 
 (defn normalise-indexes
   "Move out of bounds indexes into the next free position

@@ -32,9 +32,9 @@
          {:loses 1, :draw 0, :wins 0, :rank 3, :team "losers", :ranking 1184.0, :rd nil, :round nil}
          {:loses 2, :draw 0, :wins 0, :rank 4, :team "chelsea", :ranking 1169.47, :rd nil, :round nil}]
 
-        (calc-ranking-data [{:home "winners", :home_score 10, :away "losers", :away_score 0, :date nil}
-                            {:home "arsenal", :home_score 3, :away "chelsea", :away_score 0, :date nil}
-                            {:home "arsenal", :home_score 2, :away "chelsea", :away_score 0, :date nil}]))
+        (calc-ranking-data [{:home "winners", :home-score 10, :away "losers", :away-score 0, :date nil}
+                            {:home "arsenal", :home-score 3, :away "chelsea", :away-score 0, :date nil}
+                            {:home "arsenal", :home-score 2, :away "chelsea", :away-score 0, :date nil}]))
 
 
 ;; league ranks

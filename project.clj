@@ -21,7 +21,6 @@
                  [prismatic/schema "0.3.7"]
                  [prone "0.8.1"]
                  [figwheel "0.2.2-SNAPSHOT"]
-                 [ranking-algorithms "0.1.0-SNAPSHOT"]
                  [ring "1.3.2"]
                  [metosin/ring-middleware-format "0.6.0"]
                  [ring/ring-core "1.3.2"]
@@ -36,6 +35,7 @@
                  [weasel "0.6.0"]]
 
   :plugins [[lein-cljsbuild "1.0.5"]
+            [lein-cljfmt "0.1.10"]
             [lein-environ "1.0.0"]
             [lein-expectations "0.0.8"]
             [lein-figwheel "0.2.2-SNAPSHOT"]]
