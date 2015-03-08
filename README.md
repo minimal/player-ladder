@@ -15,17 +15,6 @@ Clone this repo
 
     git clone git@github.com:minimal/react-tutorial-om.git
 
-Clone submodule
-
-    git submodule update --init
-
-Install submodules
-
-    cd checkouts/ranking-algorithms
-    lein install
-    cd ../..
-
-
 Run server and figwheel
 
     lein repl
