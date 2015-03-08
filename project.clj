@@ -20,7 +20,7 @@
                  [prismatic/om-tools "0.3.10"]
                  [prismatic/schema "0.3.7"]
                  [prone "0.8.1"]
-                 [figwheel "0.2.3-SNAPSHOT"]
+                 [figwheel "0.2.2-SNAPSHOT"]
                  [ranking-algorithms "0.1.0-SNAPSHOT"]
                  [ring "1.3.2"]
                  [metosin/ring-middleware-format "0.6.0"]
@@ -40,6 +40,8 @@
             [lein-expectations "0.0.8"]
             [lein-figwheel "0.2.2-SNAPSHOT"]]
 
+  :clean-targets ^{:protect false} ["resources/public/js/app.js"
+                                    "resources/public/js/out"]
   ;; :jvm-opts ["-agentlib:jdwp=transport=dt_socket,server=y,suspend=n"]
 
   :profiles {:dev {:dependencies [[javax.servlet/servlet-api "2.5"]
@@ -78,6 +80,7 @@
                                         :preamble ["react/react.min.js"]
                                         :externs ["react/externs/react.js"]
                                         :optimizations :none
+                                        :cache-analysis true
                                         :pretty-print  true}}}}
 
   )

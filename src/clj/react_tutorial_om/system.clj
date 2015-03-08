@@ -11,7 +11,7 @@
                                    :is-dev? is-dev?})))
 
 (defn -main
-  [[file & [slack-url]]]
+  [file & [slack-url]]
   (component/start (make-system {:is-dev? false
                                  :db-file file
                                  :slack-url slack-url})))
