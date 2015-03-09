@@ -1,5 +1,6 @@
 (ns react-tutorial-om.exp-test
-  (:require [clj-time.coerce :refer [from-date from-string to-timestamp]]
+  (:require [clj-http.client :as client]
+            [clj-time.coerce :refer [from-date from-string to-timestamp]]
             [clj-time.core :as time]
             [clojure.data.json :as json]
             [clojure.template :refer [do-template]]
@@ -90,8 +91,8 @@
         transit-header
         app)))
 
-(defn post-api [app-state path body]
-  (let [app (make-handler false app-state nil)
+(defn post-api [app-state path body & [slack-url]]
+  (let [app (make-handler false app-state slack-url)
         bytes (java.io.ByteArrayOutputStream.)
         writer (transit/writer bytes :json)]
     (transit/write writer body)
@@ -144,3 +145,21 @@
                                       :id 1
                                       :round 1}))
               (get-in @app-state [:leagues :a :matches 0])))
+
+;; posts to slack
+(expect-let [app-state (-> fresh-state
+                           (assoc :leagues {:a {:matches []
+                                                :schedule []
+                                                :name "a"}})
+                           atom)]
+            ['("localhost" {:form-params {:text "foo wins against moo in league a: 3 - 0"}
+                            :content-type :json})]
+            (side-effects [client/post]
+                          (post-api app-state "/leagues/a/result"
+                                    {:winner "foo"
+                                     :loser "moo"
+                                     :winner-score 3
+                                     :loser-score 0
+                                     :id 1
+                                     :round 1}
+                                    "localhost")))
