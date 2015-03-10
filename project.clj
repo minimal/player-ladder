@@ -41,7 +41,8 @@
             [lein-figwheel "0.2.2-SNAPSHOT"]]
 
   :clean-targets ^{:protect false} ["resources/public/js/app.js"
-                                    "resources/public/js/out"]
+                                    "resources/public/js/out"
+                                    :target-path]
   ;; :jvm-opts ["-agentlib:jdwp=transport=dt_socket,server=y,suspend=n"]
 
   :profiles {:dev {:dependencies [[javax.servlet/servlet-api "2.5"]
