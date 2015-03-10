@@ -130,7 +130,7 @@
     #js {}
     #js {:display "none"}))
 
-(defn comment
+(defn ladder-match-row
   [{:keys [winner winner-score loser loser-score date]} owner opts]
   (om/component
    (apply dom/tr #js {:className "comment"}
@@ -143,7 +143,7 @@
                                     (map #(dom/th nil %) ["winner" "" "" "loser"])))
               (apply
                dom/tbody nil
-               (om/build-all comment (take 20 (reverse matches)))))))
+               (om/build-all ladder-match-row (take 20 (reverse matches)))))))
 
 (defn save-match!
   [match app opts]
