@@ -70,6 +70,7 @@
                                             {;;:source-paths ["env/prod/cljs"]
                                              :compiler
                                              {:optimizations :advanced
+                                              :cache-analysis false
                                               :pretty-print false}}}}}}
 
   :cljsbuild {:test-commands {"node" ["node" :node-runner "resources/public/js/app.js"]}
