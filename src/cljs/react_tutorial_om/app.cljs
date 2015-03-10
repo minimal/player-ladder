@@ -183,7 +183,9 @@
                               [away away-score]
                               [home home-score])]
     (if (and (> winner-score loser-score)
-             (= 3 winner-score))
+             (if (= "second-division" name)
+               (= 2 winner-score)
+               (= 3 winner-score)))
       (do (save-league-match! {:winner winner :winner-score winner-score
                                :loser loser :loser-score loser-score
                                :id id :round round}
