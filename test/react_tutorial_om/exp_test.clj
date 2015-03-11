@@ -5,12 +5,14 @@
             [clojure.data.json :as json]
             [clojure.template :refer [do-template]]
             [cognitect.transit :as transit]
+            [com.stuartsierra.component :as component]
             [expectations :refer :all]
             [react-tutorial-om.core :refer :all]
             [react-tutorial-om.ranking :as ranking]
             [react-tutorial-om.schemas :as sch]
             [ring.mock.request :refer :all]
-            [schema.core :as s]))
+            [schema.core :as s]
+            [react-tutorial-om.events :refer [->EventHandler]]))
 
 ;; recent
 (do-template [expected input]
@@ -146,12 +148,13 @@
                                       :round 1}))
               (get-in @app-state [:leagues :a :matches 0])))
 
-;; posts to slack
+;; posts to slack on league result
 (expect-let [app-state (-> fresh-state
                            (assoc :leagues {:a {:matches []
                                                 :schedule []
                                                 :name "a"}})
-                           atom)]
+                           atom)
+             event-handler (component/start (->EventHandler "localhost"))]
             ['("localhost" {:form-params {:text "foo wins against moo in league a: 3 - 0"}
                             :content-type :json})]
             (side-effects [client/post]
@@ -162,4 +165,6 @@
                                      :loser-score 0
                                      :id 1
                                      :round 1}
-                                    "localhost")))
+                                    (:pub-ch event-handler))
+                          (Thread/sleep 20)
+                          (component/stop event-handler)))
