@@ -21,6 +21,28 @@
        (catch Object _
          (println (:throwable &throw-context) "unexpected error"))))))
 
+
+(defn post-league-bound-players-to-slack [{:keys [best1 best2 worst1 worst2 league]}
+                                          slack-url]
+  (when-not (str/blank? slack-url)
+    (async/thread
+      (try+
+        (client/post slack-url
+                     {:form-params {:text (format "League %s:\n
+                                                  \t\tTop players:\n
+                                                  \t\t\t\t1.- %s\n
+                                                  \t\t\t\t2.- %s\n
+                                                  \t\tBottom players:\n
+                                                  \t\t\t\t1.- %s\n
+                                                  \t\t\t\t2.- %s"
+                                                  (name league) best1 best2 worst1 worst2)}
+                      :content-type :json})
+        (catch [:status 403] {:keys [request-time headers body]}
+          (println "Slack 403 " request-time headers))
+        (catch Object _
+          (println (:throwable &throw-context) "unexpected error")))))
+
+  
 (defn setup-slack-loop [channel prefix slack-url]
   (go-loop []
     (when-let [[topic msg] (<! channel)]
