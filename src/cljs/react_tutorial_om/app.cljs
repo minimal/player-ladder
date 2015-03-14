@@ -262,51 +262,44 @@
 
 (defn last-10-games [results owner]
   (om/component
-   (apply dom/ul #js {:className "last-10-games" :style #js {:width "130px"}}
-          (map #(let [win? (> (:for %) (:against %))]
-                  (dom/li #js {:className (str (if win? "win" "loss") " hover")}
-                          (dom/span nil "")
-                          (dom/div #js {:className "atooltip"}
-                                   (str (if win? "Win " "Loss ")
-                                        (:for %) " - " (:against %)
-                                        " against " (:opposition %)
-                                        " @ " (:date %)))))
-               (->> results
-                    (take-last 10))))))
+   (html [:ul.last-10-games {:style {:width "130px"}}
+          (for [game (take-last 10 results)]
+            (let [win? (> (:for game) (:against game))]
+              [:li {:class (str (if win? "win" "loss") " hover")}
+               [:span ""]
+               [:.atooltip (str (if win? "Win " "Loss ")
+                                (:for game) " - " (:against game)
+                                " against " (:opposition game)
+                                " @ " (:date game))]]))])))
 
 
 (defn player-summary
   [{{:keys [team ranking rd wins loses suggest matches] :as fields} :data
     show :display} owner opts]
   (om/component
-   (dom/div #js {:style (display show)}
-            (dom/h4 nil "Player Stats")
-            (dom/ul #js {:className "pricing-table"}
-                    (dom/li #js {:className "title"} team)
-                    (dom/li #js {:className "price"} ranking)
-                    (dom/li #js {:className "bullet-item"} (str  wins " - " loses))
-                    (dom/li #js {:className "bullet-item"}
-                            (apply dom/ul nil ;#js {:className "pricing-table"}
-                                   (map (fn [[name matches*]]
-                                          (let [wins (reduce (fn [tot {:keys [for against]}]
-                                                               (if (> for against)
-                                                                 (inc tot)
-                                                                 tot)) 0 matches*)
-                                                losses (- (count matches*) wins)]
-                                            (dom/li
-                                             nil
-                                             (dom/div #js {:className "row"}
-                                                      (dom/div #js {:className "small-6 columns"}
-                                                               (str name ": " wins "-" losses)
-                                                               (dom/div #js {:className "progress success"}
-                                                                        (dom/span
-                                                                         #js {:className "meter"
-                                                                              :style #js {:width (str (Math/round
-                                                                                                       (* 100 (/ wins (+ wins losses)))) "%")}})))
-                                                      (dom/div #js {:className "small-6 columns"}
-                                                               (om/build last-10-games (take-last 5 matches*)))))))
-                                        (reverse (sort-by (fn [[_ games]] (count games))
-                                                          (group-by :opposition matches))))))))))
+   (html [:div {:style (display show)}
+          [:h4 "Player Stats"]
+          [:ul.pricing-table
+           [:li.title team]
+           [:li.price ranking]
+           [:li.bullet-item (str  wins " - " loses)]
+           [:li.bullet-item
+            [:ul (for [[name matches*] (reverse (sort-by (fn [[_ games]] (count games))
+                                                         (group-by :opposition matches)))]
+                   (let [wins (reduce (fn [tot {:keys [for against]}]
+                                        (if (> for against)
+                                          (inc tot)
+                                          tot)) 0 matches*)
+                         losses (- (count matches*) wins)]
+                     [:li
+                      [:.row
+                       [:.small-6.columns
+                        (str name ": " wins "-" losses)
+                        [:.progress.success
+                         [:span.meter {:style {:width (str (Math/round
+                                                            (* 100 (/ wins (+ wins losses)))) "%")}}]]]
+                       [:.small-6.columns
+                        (om/build last-10-games (take-last 5 matches*))]]]))]]]])))
 
 (defn ranking
   [{:keys [team rank ranking rd wins loses suggest] :as fields} owner opts]
