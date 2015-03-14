@@ -20,7 +20,6 @@
                  [prismatic/om-tools "0.3.10"]
                  [prismatic/schema "0.3.7"]
                  [prone "0.8.1"]
-                 [figwheel "0.2.5"]
                  [ring "1.3.2"]
                  [metosin/ring-middleware-format "0.6.0"]
                  [ring/ring-core "1.3.2"]
@@ -31,8 +30,7 @@
                  [log4j "1.2.17" :exclusions [javax.mail/mail
                                               javax.jms/jms
                                               com.sun.jdmk/jmxtools
-                                              com.sun.jmx/jmxri]]
-                 [weasel "0.6.0"]]
+                                              com.sun.jmx/jmxri]]]
 
   :aliases {"test" ["expectations"]}
   :plugins [[lein-cljsbuild "1.0.5"]
@@ -51,6 +49,7 @@
                                   [expectations "2.0.16"]
                                   [figwheel "0.2.5"]
                                   [figwheel-sidecar "0.2.5"]
+                                  [weasel "0.6.0"]
                                   [com.cemerick/piggieback "0.1.5"]
                                   ;; [omdev "0.1.3-SNAPSHOT"]
                                   [spellhouse/clairvoyant "0.0-48-gf5e59d3"]

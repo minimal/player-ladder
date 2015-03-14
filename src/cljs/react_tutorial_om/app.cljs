@@ -13,8 +13,6 @@
             [sablono.core :as html :refer-macros [html]]
             [goog.history.EventType :as EventType]
             [cljs-http.client :as http]
-            [figwheel.client :as fw :include-macros true]
-            [weasel.repl :as weasel]
             ;; [clairvoyant.core :as trace :include-macros true]
             [clojure.string :as str]
             ;; [omdev.core :as omdev]
@@ -625,8 +623,6 @@
         .-location
         (set! "#/"))))
 
-(def is-dev (.contains (.. js/document -body -classList) "is-dev"))
-
 (defonce last-hash (atom ""))
 
 (defn get-hash []
@@ -636,23 +632,3 @@
 
 (sec/dispatch! (get-hash))
 (run-top-level)
-
-(defn run-refresh []
-  (let [root (get-hash)]
-    (logm root)
-    (logm last-hash)
-    (s/with-fn-validation
-      (run-top-level))))
-
-(when is-dev
-  (enable-console-print!)
-  (fw/watch-and-reload
-   :websocket-url   "ws://localhost:3449/figwheel-ws"
-   :before-jsload (fn [files]
-                    (reset! last-hash (get-hash))
-                    (logm last-hash)
-                    (fw/default-before-load files))
-   :on-jsload (fn []
-                (print "hello reloaded")
-                (run-refresh)))
-  (weasel/connect "ws://localhost:9001" :verbose true :print #{:repl :console}))

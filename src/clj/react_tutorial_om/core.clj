@@ -30,7 +30,7 @@
   (comp
    (set-attr :class "is-dev")
    (prepend (html [:script {:type "text/javascript" :src "/js/out/goog/base.js"}]))
-   (append  (html [:script {:type "text/javascript"} "goog.require('react_tutorial_om.app')"]))))
+   (append  (html [:script {:type "text/javascript"} "goog.require('react_tutorial_om.main')"]))))
 
 (deftemplate page (io/resource "public/index.html")
   [is-dev?]

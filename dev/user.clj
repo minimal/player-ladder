@@ -26,16 +26,27 @@
 
 (defonce fig-server (atom nil))
 (defonce fig-builder (atom nil))
+(defonce fig-config (atom nil))
+
+(comment (defn file-exists? [path]
+           (.exists (io/file path))))
+
+(def base-fig-config
+  {:builds [{:source-paths ["dev/cljs" "src/cljs"]
+             :compiler {:output-to "resources/public/js/app.js"
+                        :output-dir "resources/public/js/out"
+                        :source-map "resources/public/js/out.js.map"
+                        :source-map-timestamp true
+                        :preamble ["react/react.min.js"]}}]
+   :figwheel-server nil})
 
 (defn start-figwheel []
-  (let [server (fig/start-server { :css-dirs ["resources/public/css"]})
-        config {:builds [{:source-paths ["src/cljs"]
-                          :compiler {:output-to     "resources/public/js/app.js"
-                                     :output-dir    "resources/public/js/out"
-                                     :source-map    "resources/public/js/out.js.map"
-                                     :preamble      ["react/react.min.js"]}}]
-                :figwheel-server server}
+  (let [server (fig/start-server {:css-dirs ["resources/public/css"]})
+        config (assoc base-fig-config :figwheel-server server)
         builder (fig-auto/autobuild* config)]
+    (reset! fig-config config)
     (reset! fig-server server)
     (reset! fig-builder builder)))
 
+(defn stop-auto-build! []
+  (auto/stop-autobuild! @fig-builder))
