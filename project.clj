@@ -20,7 +20,7 @@
                  [prismatic/om-tools "0.3.10"]
                  [prismatic/schema "0.3.7"]
                  [prone "0.8.1"]
-                 [figwheel "0.2.2-SNAPSHOT"]
+                 [figwheel "0.2.5"]
                  [ring "1.3.2"]
                  [metosin/ring-middleware-format "0.6.0"]
                  [ring/ring-core "1.3.2"]
@@ -34,6 +34,7 @@
                                               com.sun.jmx/jmxri]]
                  [weasel "0.6.0"]]
 
+  :aliases {"test" ["expectations"]}
   :plugins [[lein-cljsbuild "1.0.5"]
             [lein-cljfmt "0.1.10"]
             [lein-environ "1.0.0"]
@@ -42,13 +43,14 @@
 
   :clean-targets ^{:protect false} ["resources/public/js/app.js"
                                     "resources/public/js/out"
+                                    "out"
                                     :target-path]
   ;; :jvm-opts ["-agentlib:jdwp=transport=dt_socket,server=y,suspend=n"]
 
   :profiles {:dev {:dependencies [[javax.servlet/servlet-api "2.5"]
                                   [expectations "2.0.16"]
-                                  [figwheel "0.2.2-SNAPSHOT"]
-                                  [figwheel-sidecar "0.2.2-SNAPSHOT"]
+                                  [figwheel "0.2.5"]
+                                  [figwheel-sidecar "0.2.5"]
                                   [com.cemerick/piggieback "0.1.5"]
                                   ;; [omdev "0.1.3-SNAPSHOT"]
                                   [spellhouse/clairvoyant "0.0-48-gf5e59d3"]
