@@ -62,7 +62,7 @@
       ;; TODO: coerce data earlier
       (update-in [:winner] clojure.string/lower-case)
       (update-in [:loser] clojure.string/lower-case)
-      (assoc :date (java.util.Date.))))
+      (assoc :date (to-timestamp (time/now)))))
 
 (s/defn ^:always-validate update-ladder-results :- sch/AllResults
   [match :- sch/Result
@@ -156,23 +156,23 @@
   (println (filter #(= (:team %) "jons") x))
   x)
 
-
-
 (defn handle-rankings
-  [results]
-  {:message "Some rankings"
-   :players (unique-players results)
-   :rankings  (->> (calc-ranking-data results)
-                   (attach-player-matches results)
-                   attach-suggested-opponents
-                   attach-uniques
-                   (filter (fn [{matches :matches}]
-                             (recent? (:date (last matches)))))
-                   #_(filter (fn [{:keys [loses wins]}] (> (+ loses wins) 4)))
-                   ((fn [col] (if (> (count col) 5)
-                               (drop-last 2 col)
-                               col)))
-                   (map-indexed (fn [i m] (assoc m :rank (inc i)))))})
+  [results & [{:keys [filtered?] :or {filtered? true}}]]
+  (let [results (map translate-keys results)]
+    {:message "Some rankings"
+     :players (unique-players results)
+     :rankings (let [res (->> results
+                              calc-ranking-data
+                              (attach-player-matches results)
+                              attach-suggested-opponents
+                              attach-uniques)]
+                 (cond->> res
+                   filtered? (filter (fn [{matches :matches}]
+                                       (recent? (:date (last matches)))))
+                   filtered? ((fn [col] (if (> (count col) 5)
+                                         (drop-last 2 col)
+                                         col)))
+                   true (map-indexed (fn [i m] (assoc m :rank (inc i))))))}))
 
 (s/defn ^:always-validate update-league-result
   "Update the state map with the result of the league match. Remove
@@ -227,7 +227,7 @@
       (GET* "/" []
             :return sch/RankingsResponse
             (ok
-             (handle-rankings (map translate-keys (:singles-ladder @db)))))))
+             (handle-rankings (:singles-ladder @db))))))
     (swaggered
      "leagues"
      :description "Leagues"

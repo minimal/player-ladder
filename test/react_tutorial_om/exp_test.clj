@@ -93,8 +93,8 @@
         transit-header
         app)))
 
-(defn post-api [app-state path body & [slack-url]]
-  (let [app (make-handler false app-state slack-url)
+(defn post-api [app-state path body & [slack-ch]]
+  (let [app (make-handler false app-state slack-ch)
         bytes (java.io.ByteArrayOutputStream.)
         writer (transit/writer bytes :json)]
     (transit/write writer body)
@@ -147,6 +147,51 @@
                                       :id 1
                                       :round 1}))
               (get-in @app-state [:leagues :a :matches 0])))
+
+;; posting to league adds to ladder with competition
+(expect-let [app-state (-> fresh-state
+                           (assoc :leagues {:a {:matches []
+                                                :schedule []
+                                                :name "a"}})
+                           atom)]
+            {:winner "foo"
+             :loser "moo"
+             :winner-score 3
+             :loser-score 0
+             :competition :a
+             :date (to-timestamp (time/date-time 1))}
+            (do
+              (freeze-time (time/date-time 1)
+                           (post-api app-state "/leagues/a/result"
+                                     {:winner "foo"
+                                      :loser "moo"
+                                      :winner-score 3
+                                      :loser-score 0
+                                      :id 1
+                                      :round 1}))
+              (get-in @app-state [:singles-ladder 0])))
+
+;; posting to a known league gives a higher ranking for winning
+(expect-let [app-state (-> fresh-state
+                           (assoc :leagues {:first-division {:matches []
+                                                             :schedule []
+                                                             :name "first-division"}})
+                           atom)]
+            (more-> "foo" :team
+                    1264.0 :ranking)
+            (do
+              (post-api app-state "/leagues/first-division/result"
+                        {:winner "foo"
+                         :loser "moo"
+                         :winner-score 3
+                         :loser-score 0
+                         :id 1
+                         :round 1})
+              (-> @app-state
+                  :singles-ladder
+                  (handle-rankings {:filtered? true})
+                  :rankings
+                  first)))
 
 ;; posts to slack on league result
 (expect-let [app-state (-> fresh-state
