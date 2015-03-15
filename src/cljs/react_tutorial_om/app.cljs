@@ -206,7 +206,7 @@
                    app opts)
       (doseq [key [:winner :winner-score :loser :loser-score]]
         (om/set-state! owner key "")))
-    false))
+    (.preventDefault e)))
 
 (defn handle-change [e owner key]
   (om/set-state! owner key (.. e -target -value)))
@@ -309,7 +309,9 @@
       (apply dom/tr nil
              (map #(dom/td nil %)
                   [rank
-                   (dom/span #js {:onClick (fn [e] (put! select-player-ch team))
+                   (dom/span #js {:onClick (fn [e]
+                                             (put! select-player-ch team)
+                                             (.stopPropagation e))
                                   :style #js {:cursor "pointer"}}
                              team)
                    ranking (.toFixed (/ wins loses) 2) suggest
@@ -384,7 +386,7 @@
                           (merge state
                                  {:round round :name name
                                   :id id :home home :away away}))
-                         (.stopPropagation %))}
+                         (.preventDefault %))}
         [:.large-10.colums
          [:.large-1.columns round]
          [:.large-4.columns
