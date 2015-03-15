@@ -14,6 +14,7 @@
            :loser-score Nat
            (s/optional-key :id) s/Int
            (s/optional-key :round) Nat
+           (s/optional-key :competition) s/Keyword
            (s/optional-key :date) java.util.Date}
           (s/pred (fn [{:keys [winner-score loser-score]}]
                     (> winner-score loser-score))

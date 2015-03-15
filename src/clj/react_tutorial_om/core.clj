@@ -70,15 +70,16 @@
   (update-in doc [:singles-ladder] conj (update-ladder-match match)))
 
 (s/defn ^:always-validate  save-match! ;; TODO: write to a db
-  [match :- sch/Result, db ]
+  [match :- sch/Result, db]
   (swap! db (partial update-ladder-results match))
   {:message "Saved Match!"})
 
-(defn translate-keys [{:keys [winner winner-score loser loser-score date]}]
+(defn translate-keys [{:keys [winner winner-score loser loser-score date competition]}]
   {:home winner
    :home-score winner-score
    :away loser
    :away-score loser-score
+   :competition competition
    :date date})
 
 (defn calc-ranking-data [matches]
@@ -182,7 +183,9 @@
                  (fn [sch] (remove #(= (:id %) (:id result)) sch)))
       (update-in [:leagues league :matches]
                  conj (assoc result :date (to-timestamp (time/now))))
-      ((partial update-ladder-results (dissoc result :id :round)))))
+      ((partial update-ladder-results (-> result
+                                          (dissoc :id :round)
+                                          (assoc :competition league))))))
 
 (defn handle-league-result
   "Given an db atom, a league name and a result update the schedule and

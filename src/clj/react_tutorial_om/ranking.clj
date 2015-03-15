@@ -63,8 +63,6 @@
   [matches :- [sch/Result]]
   (sort-ranks (vals (reduce process-league-match {} matches))))
 
-
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (def ^{:private true} mult (first [*' *]))
@@ -101,9 +99,9 @@
         (expt 10 (/ (- opponent-ranking my-ranking) 400)))))
 
 (defn ranking-after-game
-  [{:keys [ranking opponent-ranking score]}]
+  [{:keys [ranking opponent-ranking score importance]}]
   (+ ranking
-     (* 32
+     (* (or importance 32)
         (- score (expected ranking opponent-ranking)))))
 
 (defn ranking-after-loss [args]
@@ -115,27 +113,37 @@
 (defn ranking-after-draw [args]
   (ranking-after-game (merge args {:score 0.5})))
 
+(def comp-multiplier
+  {:first-division 128
+   :second-division 64})
+
 (defn process-match [ts match]
-  (let [{:keys [home away home-score away-score round]} match]
+  (let [{:keys [home away home-score away-score round competition]} match]
     (cond
       (> home-score away-score)
       (-> ts
           (update-in [home :points] #(ranking-after-win {:ranking %
-                                                         :opponent-ranking (:points (get ts away))}))
+                                                         :opponent-ranking (:points (get ts away))
+                                                         :importance (comp-multiplier competition)}))
           (update-in [away :points] #(ranking-after-loss {:ranking %
-                                                          :opponent-ranking (:points (get ts home))})))
+                                                          :opponent-ranking (:points (get ts home))
+                                                          :importance (comp-multiplier competition)})))
       (> away-score home-score)
       (-> ts
           (update-in [home :points] #(ranking-after-loss {:ranking %
-                                                          :opponent-ranking (:points (get ts away))}))
+                                                          :opponent-ranking (:points (get ts away))
+                                                          :importance (comp-multiplier competition)}))
           (update-in [away :points] #(ranking-after-win {:ranking %
-                                                         :opponent-ranking (:points (get ts home))})))
+                                                         :opponent-ranking (:points (get ts home))
+                                                         :importance (comp-multiplier competition)})))
       (= home-score away-score)
       (-> ts
           (update-in [home :points] #(ranking-after-draw {:ranking %
-                                                          :opponent-ranking (:points  (get ts away))}))
+                                                          :opponent-ranking (:points  (get ts away))
+                                                          :importance (comp-multiplier competition)}))
           (update-in [away :points] #(ranking-after-draw {:ranking %
-                                                          :opponent-ranking (:points (get ts home))}))))))
+                                                          :opponent-ranking (:points (get ts home))
+                                                          :importance (comp-multiplier competition)}))))))
 
 (defn extract-teams [matches]
   (->> matches
