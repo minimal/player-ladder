@@ -509,22 +509,21 @@
 (defcomponent leagues-page-view [{:keys [leagues path] :as data} owner opts]
   (render-state
    [this state]
-   ;; (println leagues data owner)
    (tdom/div {:className "row results-row"}
-             (tdom/div {:className "large-2 columns"
-                        :dangerouslySetInnerHTML {:__html "&nbsp;"}})
-             (tdom/div {:className "large-7 columns"}
-                       #_(om/build status-box (:conn? data))
-                       (om/build navigation-view {})
-                       (tdom/h3 "Leagues")
+     (tdom/div {:className "large-2 columns"
+                :dangerouslySetInnerHTML {:__html "&nbsp;"}})
+     (tdom/div {:className "large-7 columns"}
+       #_(om/build status-box (:conn? data))
+       (om/build navigation-view {})
+       (tdom/h3 "Leagues")
 
-                       (tdom/ul (for [[league _] leagues]
-                                  (tdom/li {} (tdom/a {:href (str "#/leagues/" (name league))}
-                                                      (name league)))))
-                       (if (seq path)
-                         (tdom/div {:style (display (seq path))}
-                           (om/build league-list (leagues (keyword (first path)))))))
-             (tdom/div {:className "large-3 columns" :dangerouslySetInnerHTML {:__html "&nbsp;"}})))
+       (tdom/ul (for [[league _] leagues]
+                  (tdom/li {:key (name league)} (tdom/a {:href (str "#/leagues/" (name league))}
+                                                        (name league)))))
+       (if (seq path)
+         (tdom/div {:style (display (seq path))}
+           (om/build league-list (leagues (keyword (first path)))))))
+     (tdom/div {:className "large-3 columns" :dangerouslySetInnerHTML {:__html "&nbsp;"}})))
   (init-state
    [_]
    {:mounted true})
