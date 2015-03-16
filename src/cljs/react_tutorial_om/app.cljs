@@ -429,7 +429,7 @@
        (for [header ["" "" "P" "W" "L" "F" "A" "Diff" "Pts" "Last 10 Games"]]
          [:th header])]
       [:tbody
-       (om/build-all league-row (:rankings league))]]
+       (om/build-all league-row (:rankings league) {:key :team})]]
      (om/build league-schedule {:name (:name league) :schedule (:schedule league)})])))
 
 (defcomponent status-box [conn? owner]
