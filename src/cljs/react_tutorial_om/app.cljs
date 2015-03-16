@@ -360,13 +360,16 @@
                           owner opts]
   (render
    [_]
-   ;; (logm matches)
    (html [:tr
           [:td rank]
-          [:td (case change
-                 :+ "▲"
-                 :- "▼"
-                 " ")]
+          [:td {:style {:color (case change
+                                 :+ "#2c7e00"
+                                 :- "#a8160c"
+                                 "")}}
+           (case change
+             :+ "▲"
+             :- "▼"
+             "")]
           [:td team]
           [:td (+ wins loses)]
           [:td wins]
