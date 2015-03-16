@@ -74,7 +74,9 @@
 
 (def fresh-state
   {:singles-ladder []
-   :leagues {}})
+   :leagues {:a {:matches []
+                 :schedule []
+                 :name "a"}}})
 
 (def match-result {:date (java.util.Date.)
                    :winner "a",
@@ -129,91 +131,79 @@
                   (s/check sch/RankingsResponse))))
 
 ;; post league
-(expect-let [app-state (-> fresh-state
-                           (assoc :leagues {:a {:matches []
-                                                :schedule []
-                                                :name "a"}})
-                           atom)]
-            {:winner "foo"
-             :loser "moo"
-             :winner-score 3
-             :loser-score 0
-             :id 1
-             :date (to-timestamp (time/date-time 1))
-             :round 1}
-            (do
-              (freeze-time (time/date-time 1)
-                           (post-api app-state "/leagues/a/result"
-                                     {:winner "foo"
-                                      :loser "moo"
-                                      :winner-score 3
-                                      :loser-score 0
-                                      :id 1
-                                      :round 1}))
-              (get-in @app-state [:leagues :a :matches 0])))
+(expect {:winner "foo"
+         :loser "moo"
+         :winner-score 3
+         :loser-score 0
+         :id 1
+         :date (to-timestamp (time/date-time 1))
+         :round 1}
+
+        (let [app-state (atom fresh-state)]
+          (freeze-time (time/date-time 1)
+                       (post-api app-state "/leagues/a/result"
+                                 {:winner "foo"
+                                  :loser "moo"
+                                  :winner-score 3
+                                  :loser-score 0
+                                  :id 1
+                                  :round 1}))
+          (get-in @app-state [:leagues :a :matches 0])))
 
 ;; posting to league adds to ladder with competition
-(expect-let [app-state (-> fresh-state
-                           (assoc :leagues {:a {:matches []
-                                                :schedule []
-                                                :name "a"}})
-                           atom)]
-            {:winner "foo"
-             :loser "moo"
-             :winner-score 3
-             :loser-score 0
-             :competition :a
-             :date (to-timestamp (time/date-time 1))}
-            (do
-              (freeze-time (time/date-time 1)
-                           (post-api app-state "/leagues/a/result"
-                                     {:winner "foo"
-                                      :loser "moo"
-                                      :winner-score 3
-                                      :loser-score 0
-                                      :id 1
-                                      :round 1}))
-              (get-in @app-state [:singles-ladder 0])))
+(expect {:winner "foo"
+         :loser "moo"
+         :winner-score 3
+         :loser-score 0
+         :competition :a
+         :date (to-timestamp (time/date-time 1))}
+
+        (let [app-state (atom fresh-state)]
+          (freeze-time (time/date-time 1)
+                       (post-api app-state "/leagues/a/result"
+                                 {:winner "foo"
+                                  :loser "moo"
+                                  :winner-score 3
+                                  :loser-score 0
+                                  :id 1
+                                  :round 1}))
+          (get-in @app-state [:singles-ladder 0])))
 
 ;; posting to a known league gives a higher ranking for winning
-(expect-let [app-state (-> fresh-state
-                           (assoc :leagues {:first-division {:matches []
-                                                             :schedule []
-                                                             :name "first-division"}})
-                           atom)]
-            (more-> "foo" :team
-                    1264.0 :ranking)
-            (do
-              (post-api app-state "/leagues/first-division/result"
-                        {:winner "foo"
-                         :loser "moo"
-                         :winner-score 3
-                         :loser-score 0
-                         :id 1
-                         :round 1})
-              (-> @app-state
-                  :singles-ladder
-                  (handle-rankings {:filtered? true})
-                  :rankings
-                  first)))
+(expect (more-> "foo" :team
+                1264.0 :ranking)
+
+        (let [app-state (-> fresh-state
+                            (assoc :leagues {:first-division {:matches []
+                                                              :schedule []
+                                                              :name "first-division"}})
+                            atom)]
+          (post-api app-state "/leagues/first-division/result"
+                    {:winner "foo"
+                     :loser "moo"
+                     :winner-score 3
+                     :loser-score 0
+                     :id 1
+                     :round 1})
+          (-> @app-state
+              :singles-ladder
+              (handle-rankings {:filtered? true})
+              :rankings
+              first)))
 
 ;; posts to slack on league result
-(expect-let [app-state (-> fresh-state
-                           (assoc :leagues {:a {:matches []
-                                                :schedule []
-                                                :name "a"}})
-                           atom)
-             event-handler (component/start (->EventHandler "localhost"))]
-            ['("localhost" {:form-params {:text "foo wins against moo in league a: 3 - 0"}
-                            :content-type :json})]
-            (side-effects [client/post]
-                          (post-api app-state "/leagues/a/result"
-                                    {:winner "foo"
-                                     :loser "moo"
-                                     :winner-score 3
-                                     :loser-score 0
-                                     :id 1
-                                     :round 1}
-                                    (:pub-ch event-handler))
-                          (Thread/sleep 20)
-                          (component/stop event-handler)))
+(expect ['("localhost" {:form-params {:text "foo wins against moo in league a: 3 - 0"}
+                        :content-type :json})]
+        (let [app-state (atom fresh-state)
+              event-handler (component/start (->EventHandler "localhost"))]
+          (side-effects [client/post]
+                        (post-api app-state "/leagues/a/result"
+                                  {:winner "foo"
+                                   :loser "moo"
+                                   :winner-score 3
+                                   :loser-score 0
+                                   :id 1
+                                   :round 1}
+                                  (:pub-ch event-handler))
+                        (Thread/sleep 50)
+                        (component/stop event-handler))))
