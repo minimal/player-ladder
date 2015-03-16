@@ -182,8 +182,11 @@
   matches for the league and write out to file. Return the resulting
   state. Also post to slack if possible."
   [db league {:keys [winner loser winner-score loser-score] :as result} event-ch]
-  (swap! db (partial update-league-result result league))
-  (go (>! event-ch [:league-match (assoc result :league league)]))
+  (let [db-snapshot (swap! db (partial update-league-result result league))]
+    (if event-ch
+      (go (>! event-ch [:league-match (assoc result
+                                             :league league
+                                             :db-snapshot db-snapshot)]))))
   {:message "ok"})
 
 (defn- handle-get-leagues
