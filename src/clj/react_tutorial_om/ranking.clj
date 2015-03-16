@@ -58,10 +58,51 @@
         (update-in [loser :diff] + (- (:loser-score match) (:winner-score match)))
         (update-in [loser :matches] conj (match->loser-match match)))))
 
+(defn- group-sort-rankings
+  [rankings]
+  (reverse (sort (group-by (juxt :points :diff) (vals rankings)))))
+
+(defn- rankings-name-ranks
+  [rankings]
+  (second (reduce (fn [[t m] ns]
+                    [(+ t (count ns))
+                     (reduce (fn [m2 n] (assoc m2 n (inc t))) m ns)])
+                  [0 {}]
+                  (map (fn [[_ ns]] (map :team ns))
+                       (group-sort-rankings rankings)))))
+
 (s/defn ^:always-validate matches->league-ranks :- [sch/LeagueRanking]
   "Turn raw matches into per player rankings"
   [matches :- [sch/Result]]
-  (sort-ranks (vals (reduce process-league-match {} matches))))
+  (let [grouped-matches (group-by :round matches)
+        rounds (count grouped-matches)
+        sorted-grouped (sort grouped-matches)
+        rounds-to-drop (cond
+                         (>= 1 rounds) 0
+                         (= 2 rounds) 1
+                         (<= 5 (count (second (last sorted-grouped)))) 1
+                         :else 2)
+        prev-matches (mapcat second (drop-last rounds-to-drop sorted-grouped))
+        prev-rankings (reduce process-league-match {} prev-matches)
+        prev-name->rank (rankings-name-ranks prev-rankings)
+
+        cur-rankings (reduce process-league-match {} matches)
+        cur-name->rank (rankings-name-ranks cur-rankings)
+
+        name->rank-diff (into {} (map (fn [[n r]]
+                                        [n (cond
+                                             (< r (prev-name->rank n 5)) :+
+                                             (= r (prev-name->rank n 5)) nil
+                                             :else :-)])
+                                      cur-name->rank))
+
+        final-ranks (for [[name row] cur-rankings]
+                      (assoc row
+                             :rank (cur-name->rank name)
+                             :change (name->rank-diff name)))
+        ]
+
+    (sort-by :rank final-ranks)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

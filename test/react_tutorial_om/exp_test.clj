@@ -48,6 +48,8 @@
           :points 1,
           :for 5,
           :against 4,
+          :change nil
+          :rank 1
           :diff 1,
           :matches
           [{:date #inst "2015-01-01T00:00:00.000-00:00", :for 3, :against 1, :opposition "rob", :round nil}
@@ -59,6 +61,8 @@
           :points 1,
           :for 4,
           :against 5,
+          :change nil
+          :rank 2
           :diff -1,
           :matches
           [{:date #inst "2015-01-01T00:00:00.000-00:00", :for 1, :against 3, :opposition "chris", :round nil}

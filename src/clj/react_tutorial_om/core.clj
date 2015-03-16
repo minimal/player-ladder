@@ -196,6 +196,13 @@
   (go (>! event-ch [:league-match (assoc result :league league)]))
   {:message "ok"})
 
+(defn- handle-get-leagues
+  [db]
+  (into {} (for [[l {:keys [matches schedule name]}] (:leagues @db)]
+             [l {:rankings (ranking/matches->league-ranks matches)
+                 :schedule schedule
+                 :name name}])))
+
 (defn make-routes [is-dev? db event-ch]
   (with-routes
     (route/resources "/")
@@ -236,10 +243,7 @@
       (GET* "/" []
             :return sch/LeaguesResponse
             (ok
-             {:leagues (into {} (for [[l {:keys [matches schedule name]}] (:leagues @db)]
-                                  [l {:rankings (ranking/matches->league-ranks matches)
-                                      :schedule schedule
-                                      :name name}]))}))
+             {:leagues (handle-get-leagues db)}))
       (POST* "/:league/result" [league] ;TODO: take id in post url?
              :body [result sch/LeagueResult]
              (ok (handle-league-result db (keyword league) result event-ch)))))

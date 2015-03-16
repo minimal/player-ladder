@@ -355,13 +355,18 @@
        (dom/h3 nil "Rankings")
        (om/build ranking-list (:rankings app) {:opts opts})))))
 
-(defcomponent league-row [{:keys [team wins loses points matches for against diff]} ;;:- (schema/cursor LeagueRanking)
+(defcomponent league-row [{:keys [team wins loses points matches for against diff
+                                  rank change]} ;;:- (schema/cursor LeagueRanking)
                           owner opts]
   (render
    [_]
    ;; (logm matches)
    (html [:tr
-          [:td ""]
+          [:td rank]
+          [:td (case change
+                 :+ "▲"
+                 :- "▼"
+                 " ")]
           [:td team]
           [:td (+ wins loses)]
           [:td wins]
@@ -426,7 +431,7 @@
      [:h3 (:name league)]
      [:table.rankingTable
       [:thead
-       (for [header ["" "" "P" "W" "L" "F" "A" "Diff" "Pts" "Last 10 Games"]]
+       (for [header ["" "" "" "P" "W" "L" "F" "A" "Diff" "Pts" "Last 10 Games"]]
          [:th header])]
       [:tbody
        (om/build-all league-row (:rankings league) {:key :team})]]

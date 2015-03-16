@@ -63,6 +63,8 @@
    ;; :rank Nat,
    :matches [Match]
    (s/optional-key :round) (s/maybe s/Int)
+   (s/optional-key :rank) Nat
+   (s/optional-key :change) (s/maybe (s/enum :+ :-))
    :team s/Str
    :draw Nat
    :loses Nat
