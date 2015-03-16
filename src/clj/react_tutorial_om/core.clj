@@ -13,28 +13,18 @@
             [compojure.core :refer [GET]]
             [compojure.route :as route]
             [com.stuartsierra.component :as component]
-            [net.cgrand.enlive-html :refer [append deftemplate html prepend set-attr]]
             [prone.debug :refer [debug]]
             [prone.middleware :as prone]
             [react-tutorial-om.ranking :as ranking]
             [react-tutorial-om.schemas :as sch]
             ring.adapter.jetty
             [ring.middleware.format :refer [wrap-restful-format]]
-            [ring.util.http-response :as http-resp :refer [ok]]
+            [ring.util.http-response :as http-resp :refer [ok resource-response]]
             [schema.core :as s]
             [slingshot.slingshot :refer [throw+ try+]]))
 
 (def archived-teams #{"jons" "cliff" "sina" "jamie" "michael" "michal"})
 
-(def inject-devmode-html
-  (comp
-   (set-attr :class "is-dev")
-   (prepend (html [:script {:type "text/javascript" :src "/js/out/goog/base.js"}]))
-   (append  (html [:script {:type "text/javascript"} "goog.require('react_tutorial_om.main')"]))))
-
-(deftemplate page (io/resource "public/index.html")
-  [is-dev?]
-  [:body] (if is-dev? inject-devmode-html identity))
 
 (defn recent? [date & [now weeks]]
   (boolean (some-> date
@@ -205,11 +195,12 @@
 
 (defn make-routes [is-dev? db event-ch]
   (with-routes
+    (GET "/" [] (resource-response "index.html" {:root "public"}))
     (route/resources "/")
     (route/resources "/react" {:root "react"})
     (swagger-ui :swagger-docs "/api/docs")
     (swagger-docs "/api/docs")
-    (GET "/app" [] (apply str (page is-dev?)))
+    (GET "/app" [] (resource-response "index.html" {:root "public"}))
     (GET "/init" [] (init! db) "inited")
     (swaggered
      "matches"

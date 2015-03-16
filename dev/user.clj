@@ -37,6 +37,8 @@
                         :output-dir "resources/public/js/out"
                         :source-map "resources/public/js/out.js.map"
                         :source-map-timestamp true
+                        :main "react-tutorial-om.main"
+                        :asset-path "js/out"
                         :preamble ["react/react.min.js"]}}]
    :figwheel-server nil})
 

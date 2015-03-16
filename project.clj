@@ -9,12 +9,11 @@
                  [com.matthiasnehlsen/inspect "0.1.11"]
                  [com.stuartsierra/component "0.2.3"]
                  [compojure "1.3.2"]
-                 [enlive "1.1.5"]
                  [environ "1.0.0"]
                  [metosin/compojure-api "0.18.0" :exclude [ring-middleware-format prismatic/plumbing]]
                  [org.omcljs/om "0.8.8"]
                  [org.clojure/clojure "1.7.0-alpha5"]
-                 [org.clojure/clojurescript "0.0-3058"]
+                 [org.clojure/clojurescript "0.0-3119"]
                  [org.clojure/core.async "0.1.346.0-17112a-alpha"]
                  [org.clojure/tools.reader "0.8.16"]
                  [prismatic/om-tools "0.3.10"]
@@ -69,7 +68,7 @@
                        :hooks [leiningen.cljsbuild]
                        :env {:production true}
                        :cljsbuild {:builds {:app
-                                            {;;:source-paths ["env/prod/cljs"]
+                                            {:source-paths ["src/prod/cljs"]
                                              :compiler
                                              {:optimizations :advanced
                                               :cache-analysis false
@@ -83,6 +82,7 @@
                                         :preamble ["react/react.min.js"]
                                         :externs ["react/externs/react.js"]
                                         :optimizations :none
+                                        :main "react-tutorial-om.main"
                                         :cache-analysis true
                                         :pretty-print  true}}}}
 
