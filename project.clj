@@ -38,6 +38,10 @@
             [lein-expectations "0.0.8"]
             [lein-figwheel "0.2.2-SNAPSHOT"]]
 
+  :cljfmt {:indents {do-template [[:block 1]]
+                     context [[:block 1]]
+                     swaggered [[:block 1]]
+                     div [[:block 1]]}}
   :clean-targets ^{:protect false} ["resources/public/js/app.js"
                                     "resources/public/js/out"
                                     "out"
