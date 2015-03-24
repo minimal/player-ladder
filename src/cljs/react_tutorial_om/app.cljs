@@ -16,7 +16,7 @@
             ;; [clairvoyant.core :as trace :include-macros true]
             [clojure.string :as str]
             ;; [omdev.core :as omdev]
-            [react-tutorial-om.utils :refer [guid] :refer-macros [logm]])
+            [react-tutorial-om.utils :refer [guid] :refer-macros [logm inspect breakpoint]])
   (:import [goog History]))
 
 (enable-console-print!)
@@ -166,7 +166,7 @@
   [match app opts]
   (go (let [res (<! (http/post (:url opts) {:transit-params match}))]
         (when (:success res)
-          (logm "saved league:" res)
+          (inspect "saved league:" res)
           (fetch-leagues app opts))
         res)))
 
@@ -191,7 +191,7 @@
           (om/transact! app [(keyword name) :schedule]
                         (fn [s] (remove #(= (:id %) id) s))))
       (logm "Warning: invalid score"))
-    (logm "onsubmit" result "winner" winner)))
+    (inspect "onsubmit" result "winner" winner)))
 
 (defn handle-submit
   [e app owner opts {:keys [winner winner-score loser loser-score]}]
@@ -415,7 +415,7 @@
 (defcomponent league-schedule [{:keys [name schedule]} owner opts]
   (render
    [_]
-   ;; (logm schedule)
+   ;; (inspect schedule)
    (html
     [:div
      [:h4.subheader "Schedule"]
@@ -428,7 +428,7 @@
    {:mounted false})
   (render
    [_]
-   ;; (logm league)
+   ;; (inspect league)
    (html
     [:div
      [:h3 (:name league)]
@@ -571,7 +571,7 @@
      :leagues (om/build leagues-page-view app)
      :ladder (om/build ladder-app app)
      :about (om/build about-page-view app)
-     (do (logm "unknown path " view)
+     (do (inspect "unknown path " view)
          (om/build ladder-app app))))
 
   (will-mount
@@ -579,8 +579,8 @@
    (logm "starting top-level")
    (go (loop []
          (when-let [[view' path'] (<! nav-ch)]
-           (logm view')
-           (logm path')
+           (inspect view')
+           (inspect path')
            (om/transact! app #(assoc %
                                      :view view'
                                      :path path'))
@@ -602,7 +602,7 @@
   (put! nav-ch [:leagues []]))
 
 (sec/defroute league "/leagues/:id" [id]
-  (logm id)
+  (inspect id)
   (put! nav-ch [:leagues [id]]))
 
 (sec/defroute root-page "/" []
