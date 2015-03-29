@@ -24,3 +24,5 @@
  :on-jsload (fn []
               (run-refresh)))
 (weasel/connect "ws://localhost:9001" :verbose true :print #{:repl :console})
+
+(app/run-top-level)

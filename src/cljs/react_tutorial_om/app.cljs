@@ -360,7 +360,11 @@
                           owner opts]
   (render
    [_]
-   (html [:tr
+   (html [:tr {:style (cond
+                        (< 10 rank) {:background-color "#EEAAAA"}
+                        (= 10 rank) {:background-color "#FFCC00"}
+                        (> 3 rank) {:background-color "#AAEEAA"}
+                        :else nil)}
           [:td rank]
           [:td {:style {:color (case change
                                  :+ "#2c7e00"
@@ -377,7 +381,7 @@
           [:td for]
           [:td against]
           [:td diff]
-          [:td points]
+          [:td {:style {:color "darkgreen"}} points]
           [:td (om/build last-10-games matches)]])))
 
 (defcomponent league-schedule-row [{:keys [round home id away name] :as app} owner opts]
@@ -432,6 +436,9 @@
    (html
     [:div
      [:h3 (:name league)]
+     (if (= "first-division" (:name league))
+       [:img {:src "/img/pm_tt.png" :style {:height "150px"}}]
+       [:img {:src "/img/pingpongblue.png" :style {:height "150px"}}])
      [:table.rankingTable
       [:thead
        (for [header ["" "" "" "P" "W" "L" "F" "A" "Diff" "Pts" "Last 10 Games"]]
@@ -530,7 +537,7 @@
   (will-mount
    [_]
    (prn "will mount leagues")
-   (logm  opts)
+   (inspect opts)
    (go (while (om/get-state owner :mounted)
          ;; (logm :polling)
          (fetch-leagues leagues opts)
@@ -633,4 +640,3 @@
       .-hash))
 
 (sec/dispatch! (get-hash))
-(run-top-level)
