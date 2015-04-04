@@ -204,7 +204,7 @@
     (swagger-ui :swagger-docs "/api/docs")
     (swagger-docs "/api/docs")
     (GET "/app" [] (resource-response "index.html" {:root "public"}))
-    (GET "/init" [] (init! db) "inited")
+    ;;(GET "/init" [] (init! db) "inited")
     (swaggered
      "matches"
      :description "Matches"
@@ -265,7 +265,6 @@
       (cond-> is-dev? (prone/wrap-exceptions
                        {:app-namespaces ["react-tutorial-om"]
                         :skip-prone? (fn [{:keys [headers]}]
-                                       (println headers)
                                        (contains? headers "postman-token"))}))
       ;; compojure.api.middleware/api-middleware
       (wrap-restful-format {:formats [:json :transit-json]})
