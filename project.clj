@@ -48,7 +48,7 @@
   ;; :jvm-opts ["-agentlib:jdwp=transport=dt_socket,server=y,suspend=n"]
 
   :profiles {:dev {:dependencies [[javax.servlet/servlet-api "2.5"]
-                                  [expectations "2.1.0"]
+                                  [expectations "2.0.16"]
                                   [figwheel "0.2.5"]
                                   [figwheel-sidecar "0.2.5"]
                                   [weasel "0.6.0"]
