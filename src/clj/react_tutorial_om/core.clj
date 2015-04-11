@@ -99,23 +99,25 @@
   TODO: tidy up"
   [{:keys [rank matches]} ranks]
   (try
-    (let [offset 2
-          idx-rank (dec rank)
-          opps1 (range rank (+ rank offset))
-          opps2 (range (- idx-rank offset) idx-rank)
-          allopps  (->> (concat opps1 opps2)
-                        (normalise-indexes (count ranks) offset))
-          oppnames-set (set (map ranks allopps))
-          matchfreqs (frequencies (sequence (comp (map :opposition)
-                                                  (filter #(contains? oppnames-set %)))
-                                            matches))
-          near-totals (reduce (fn [acc [k v]] (assoc acc k v))
-                              (zipmap oppnames-set (repeat 0)) ;; Start at 0
-                              matchfreqs)
-          sorted-totals (sort-by second near-totals)]
-      (ffirst (remove #(archived-teams (first %)) sorted-totals)))
+    (if (< 4 (count ranks))
+      (let [offset 2
+            idx-rank (dec rank)
+            opps1 (range rank (+ rank offset))
+            opps2 (range (- idx-rank offset) idx-rank)
+            allopps (->> (concat opps1 opps2)
+                         (normalise-indexes (count ranks) offset))
+            oppnames-set (set (map ranks allopps))
+            matchfreqs (frequencies (sequence (comp (map :opposition)
+                                                    (filter #(contains? oppnames-set %)))
+                                              matches))
+            near-totals (reduce (fn [acc [k v]] (assoc acc k v))
+                                (zipmap oppnames-set (repeat 0)) ;; Start at 0
+                                matchfreqs)
+            sorted-totals (sort-by second near-totals)]
+        (ffirst (remove #(archived-teams (first %)) sorted-totals)))
+      "")
     (catch IndexOutOfBoundsException e
-      (println "Error in suggest oponent" e)
+      (println "Error in suggest opponent" (class e))
       "")))
 
 (defn attach-suggested-opponents
