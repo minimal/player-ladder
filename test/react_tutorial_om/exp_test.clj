@@ -116,14 +116,14 @@
 
 ;; players
 (expect #{"a" "b"} (-> fresh-state
-                       (update-in [:singles-ladder] conj match-result)
+                       (update :singles-ladder conj match-result)
                        atom
                        (get-api "/rankings")
                        slurp-transit-body
                        :players))
 
 (expect nil? (-> fresh-state
-                 (update-in [:singles-ladder] conj match-result)
+                 (update :singles-ladder conj match-result)
                  atom
                  (get-api "/rankings")
                  slurp-transit-body

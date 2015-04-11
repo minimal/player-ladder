@@ -25,7 +25,6 @@
 
 (def archived-teams #{"jons" "cliff" "sina" "jamie" "michael" "michal"})
 
-
 (defn recent? [date & [now weeks]]
   (boolean (some-> date
                    (#(or (from-string %) (from-date %)))
@@ -50,8 +49,8 @@
   [match :- sch/Result]
   (-> match
       ;; TODO: coerce data earlier
-      (update-in [:winner] clojure.string/lower-case)
-      (update-in [:loser] clojure.string/lower-case)
+      (update :winner clojure.string/lower-case)
+      (update :loser clojure.string/lower-case)
       (assoc :date (to-timestamp (time/now)))))
 
 (s/defn ^:always-validate update-ladder-results :- sch/AllResults
