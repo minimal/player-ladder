@@ -30,6 +30,12 @@
 (expect '(4 3 1 2) (normalise-indexes 10 2 [-2 -1 1 2]))
 (expect '(7 8 5 6) (normalise-indexes 10 2 [7 8 10 11]))
 
+(expect "" (suggest-opponent {:rank 1 :matches []} ["a" "b"]))
+(expect "e"
+        (suggest-opponent {:rank    1
+                           :matches [{:opposition "b"} {:opposition "c"} {:opposition "d"} {:opposition "b"}]}
+                         ["a" "b" "c" "d" "e" "f"]))
+
 (expect [{:loses 0, :draw 0, :wins 2, :rank 1, :team "arsenal", :ranking 1230.53, :rd nil, :round nil}
          {:loses 0, :draw 0, :wins 1, :rank 2, :team "winners", :ranking 1216.0, :rd nil, :round nil}
          {:loses 1, :draw 0, :wins 0, :rank 3, :team "losers", :ranking 1184.0, :rd nil, :round nil}
