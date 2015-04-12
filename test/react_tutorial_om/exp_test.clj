@@ -82,6 +82,7 @@
   {:singles-ladder []
    :leagues {:a {:matches []
                  :schedule []
+                 :players []
                  :name "a"}}})
 
 (def match-result {:date (java.util.Date.)
@@ -182,6 +183,7 @@
         (let [app-state (-> fresh-state
                             (assoc :leagues {:first-division {:matches []
                                                               :schedule []
+                                                              :players []
                                                               :name "first-division"}})
                             atom)]
           (post-api app-state "/leagues/first-division/result"

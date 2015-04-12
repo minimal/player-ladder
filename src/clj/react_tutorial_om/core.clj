@@ -13,12 +13,18 @@
             [compojure.core :refer [GET]]
             [compojure.route :as route]
             [com.stuartsierra.component :as component]
+            [buddy.auth :refer [authenticated? throw-unauthorized]]
+            [buddy.auth.backends.session :refer [session-backend]]
+            [buddy.auth.middleware :refer [wrap-authentication wrap-authorization]]
             [prone.debug :refer [debug]]
             [prone.middleware :as prone]
             [react-tutorial-om.ranking :as ranking]
             [react-tutorial-om.schemas :as sch]
             ring.adapter.jetty
             [ring.middleware.format :refer [wrap-restful-format]]
+            [ring.middleware.session :refer [wrap-session]]
+            [ring.middleware.params :refer [wrap-params]]
+            [ring.util.response :refer [redirect]]
             [ring.util.http-response :as http-resp :refer [ok resource-response]]
             [schema.core :as s]
             [slingshot.slingshot :refer [throw+ try+]]))
@@ -192,9 +198,10 @@
 
 (defn- handle-get-leagues
   [db]
-  (into {} (for [[l {:keys [matches schedule name]}] (:leagues @db)]
+  (into {} (for [[l {:keys [matches schedule name players]}] (:leagues @db)]
              [l {:rankings (ranking/matches->league-ranks matches)
                  :schedule schedule
+                 :players players
                  :name name}])))
 
 (defn make-routes [is-dev? db event-ch]
@@ -241,7 +248,12 @@
              {:leagues (handle-get-leagues db)}))
       (POST* "/:league/result" [league] ;TODO: take id in post url?
              :body [result sch/LeagueResult]
-             (ok (handle-league-result db (keyword league) result event-ch)))))
+             (ok (handle-league-result db (keyword league) result event-ch)))
+      (GET* "/editable" req
+            (if-not (authenticated? req)
+              (do (prn "no auth")
+                  (throw-unauthorized))
+              (ok)))))
     (route/not-found "Page not found")))
 
 (defn wrap-schema-errors [handler]
@@ -259,10 +271,30 @@
       #_(println res)
       res)))
 
+(defn unauthorized-handler [req metadata]
+  (prn "in unauth" req)
+  (if-let [user (get-in req [:query-params "user"])]
+    (let [next-url (get-in req [:query-params :next] "/app")
+          updated-session (assoc (:session req) :identity (keyword user))]
+      (println updated-session)
+      (let [resp
+            (-> (redirect next-url)
+                (assoc :session updated-session))]
+        (prn resp)
+        resp))
+    {:status 401 :body {:error "Not authorized"}}))
+
+(def auth-backend
+  (session-backend {:unauthorized-handler unauthorized-handler}))
+
+
 (defn make-handler [is-dev? db event-ch]
   (-> (make-routes is-dev? db event-ch)
       ;; log-request-middleware
-
+      (wrap-authorization auth-backend)
+      (wrap-authentication auth-backend)
+      wrap-params
+      wrap-session
       (cond-> is-dev? (prone/wrap-exceptions
                        {:app-namespaces ["react-tutorial-om"]
                         :skip-prone? (fn [{:keys [headers]}]

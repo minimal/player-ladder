@@ -8,6 +8,7 @@
                  [cljs-http "0.1.27"]
                  [com.stuartsierra/component "0.2.3"]
                  [compojure "1.3.3"]
+                 [buddy/buddy-auth "0.5.0"]
                  [environ "1.0.0"]
                  [metosin/compojure-api "0.18.0" :exclude [ring-middleware-format prismatic/plumbing]]
                  [org.omcljs/om "0.8.8"]

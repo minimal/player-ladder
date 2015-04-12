@@ -85,14 +85,17 @@
 (s/defschema LeaguesResponse
   {:leagues {s/Keyword {:rankings [LeagueRanking]
                         :schedule [LeagueScheduleMatch]
+                        :players [s/Str]
                         :name s/Str}}})
 
 (s/defschema LeagueStorage
   {s/Keyword {:matches [Result]
               :schedule [LeagueScheduleMatch]
+              :players [s/Str]
               :name s/Str}})
 
 (s/defschema AllResults
   "Results as stored in edn file"
   {:singles-ladder [Result]
    (s/optional-key :leagues) LeagueStorage})
+

@@ -402,15 +402,72 @@
              [:option {:value (str n)} n])]]
          [:input {:class "button tiny" :type "submit" :value "Post"}]]]]))))
 
-(defcomponent league-schedule [{:keys [name schedule]} owner opts]
+(defn check-leagues-editable
+  "Calls editable endpoint, sets state
+
+  If success set to editable, if unauth set not-auth true"
+  [owner]
+  (go (let [{:keys [success status]} (<! (http/get "/leagues/editable"))]
+        (if success
+          (om/set-state! owner :editable true)
+          (when (= 401 status)
+            (om/update-state! owner (fn [s]
+                                      (assoc s
+                                        :editable false
+                                        :not-auth true))))))))
+
+(defcomponent league-schedule-edit
+  "Allows adding matches to schedule of authorised"
+  [data owner opts]
+  (init-state [_]
+    {:editable false
+     :not-auth false  ;; true if verified not authorised
+     :round 1
+     :home (first (:players data))
+     :away (second (:players data))})
+
+  (render-state [this state]
+    (html [:div [:a {:on-click #(check-leagues-editable owner)}
+                 "Edit"]
+           (if (:editable state)
+             [:form {:on-submit #(do (inspect %)
+                                     (.preventDefault %))}
+              [:.large-10.colums
+               [:.large-2.columns
+                [:label {:for "round-select"} "Round"]
+                [:select {:id        "round-select" :value (:round state)
+                          :on-change #(handle-change % owner :round)}
+                 (for [n (range 1 (inc (count (:players data))))]
+                   [:option {:value (str n)} n])]]
+               [:.large-4.columns
+                [:label {:for "add-home"} "Home"]
+                [:select {:id        "add-home" :value (:home state)
+                          :on-change #(handle-change % owner :home)}
+                 (for [p (:players data)]
+                   [:option {:value p} p])]]
+               [:.large-4.columns
+                [:label {:for "add-away"} "Away"]
+                [:select {:id        "add-away" :value (:away state)
+                          :on-change #(handle-change % owner :away)}
+                 (for [p (:players data)]
+                   [:option {:value p} p])]]
+               [:input {:class "button tiny" :type "submit" :value "Add"}]]]
+             ;; else
+             (when (:not-auth state)
+               (go (<! (timeout 10000))
+                   (om/set-state! owner :not-auth false))
+               [:.alert-box.warning.radius "Not authorised to edit"]))]))
+  )
+
+(defcomponent league-schedule [{:keys [name schedule] :as data} owner opts]
   (render
    [_]
-   ;; (inspect schedule)
    (html
     [:div
      [:h4.subheader "Schedule"]
      (for [row schedule]
-       (om/build league-schedule-row (assoc row :name name) {:react-key (guid)}))])))
+       (om/build league-schedule-row (assoc row :name name) {:react-key (guid)}))
+     (om/build league-schedule-edit data)])))
 
 (defcomponent league-list [league owner opts]
   (init-state
@@ -431,7 +488,7 @@
          [:th header])]
       [:tbody
        (om/build-all league-row (:rankings league) {:key :team})]]
-     (om/build league-schedule {:name (:name league) :schedule (:schedule league)})])))
+     (om/build league-schedule (select-keys league [:schedule :name :players]))])))
 
 (defcomponent status-box [conn? owner]
   (render [_]
@@ -497,9 +554,8 @@
 
 
 (defcomponent leagues-page-view [{:keys [leagues path] :as data} owner opts]
-  (render-state
-   [this state]
-   (inspect opts (+ 1 2 3))
+  (render
+   [_]
    (tdom/div {:className "row results-row"}
      (tdom/div {:className "large-2 columns"
                 :dangerouslySetInnerHTML {:__html "&nbsp;"}})

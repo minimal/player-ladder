@@ -24,7 +24,7 @@
 (defn setup-slack-loop [channel prefix slack-url]
   (go-loop []
     (when-let [[topic msg] (<! channel)]
-      (println prefix ": " topic ": " msg)
+      ;(println prefix ": " topic ": " msg)
       (case topic
         :league-match (post-league-result-to-slack msg slack-url)
         (println "Unknown topic " topic))
