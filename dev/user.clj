@@ -52,3 +52,15 @@
 
 (defn stop-auto-build! []
   (auto/stop-autobuild! @fig-builder))
+
+(defn- mark-tests-as-unrun []
+  (let [all (->> (all-ns)
+                 (mapcat (comp vals ns-interns)))
+        previously-ran-tests (filter (comp :expectations/run meta) all)]
+    (doseq [test previously-ran-tests]
+      (alter-meta! test dissoc :expectations/run :status))))
+
+(defn reset-run-tests []
+  (reset)
+  (mark-tests-as-unrun)
+  (expectations/run-all-tests))

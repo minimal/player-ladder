@@ -2,7 +2,7 @@ language: clojure
 script:
   - lein expectations
   - lein with-profile -dev,+uberjar cljsbuild once
-  - lein cljfmt check | ":"
+#  - lein cljfmt check | ":"
 notifications:
   webhooks:
     urls:
