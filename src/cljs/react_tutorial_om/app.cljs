@@ -192,6 +192,20 @@
       (logm "Warning: invalid score"))
     (inspect "onsubmit" result "winner" winner)))
 
+(defn handle-league-schedule-submit
+  "Adds a new game to the schedule"
+  [app owner {:keys [home away name round] :as data}]
+  {:pre [(not= home away)]}
+  (inspect data)
+  (go (let [res (<! (http/post (str "/leagues" "/schedule/" name)
+                               {:transit-params (update data :round js/parseInt)}))]
+        (when (:success res)
+          (inspect "saved league schedule:" res)
+          (fetch-leagues app {}))
+        res))
+  )
+
+
 (defn handle-submit
   [e app owner opts {:keys [winner winner-score loser loser-score]}]
   (let [winner (clojure.string/trim winner)
@@ -430,8 +444,12 @@
     (html [:div [:a {:on-click #(check-leagues-editable owner)}
                  "Edit"]
            (if (:editable state)
-             [:form {:on-submit #(do (inspect %)
-                                     (.preventDefault %))}
+             [:form {:on-submit #(do (.preventDefault %)
+                                     (handle-league-schedule-submit
+                                       data owner
+                                       (assoc (select-keys state [:round :home :away])
+                                         :name (:name data)))
+                                     )}
               [:.large-10.colums
                [:.large-2.columns
                 [:label {:for "round-select"} "Round"]

@@ -84,7 +84,7 @@
 
 (defn attach-player-matches [results rankings]
   (for [rank rankings]
-    (assoc-in rank [:matches] (ranking/show-matches (:team rank) results))))
+    (assoc rank :matches (ranking/show-matches (:team rank) results))))
 
 (defn normalise-indexes
   "Move out of bounds indexes into the next free position
@@ -204,6 +204,18 @@
                  :players players
                  :name name}])))
 
+(defn handle-post-league-schedule
+  [db league {:keys [home away round] :as fixture}]
+  (let [id (hash (str round home away (rand-int 1000)))
+        fixture' (-> fixture
+                     (assoc :id id)
+                     (dissoc :name))]
+    (s/validate sch/LeagueScheduleMatch fixture')
+    (swap! db (fn [a] (update-in a [:leagues (keyword league) :schedule]
+                                 #(conj % fixture'))))
+    (ok id))
+  )
+
 (defn make-routes [is-dev? db event-ch]
   (with-routes
     (GET "/" [] (resource-response "index.html" {:root "public"}))
@@ -253,7 +265,10 @@
             (if-not (authenticated? req)
               (do (prn "no auth")
                   (throw-unauthorized))
-              (ok)))))
+              (ok)))
+      (POST* "/schedule/:league" [league]
+             :body [fixture s/Any]
+             (ok (handle-post-league-schedule db league fixture)))))
     (route/not-found "Page not found")))
 
 (defn wrap-schema-errors [handler]
