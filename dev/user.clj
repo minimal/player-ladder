@@ -10,6 +10,7 @@
             [clojure.string :as str]
             [clojure.test :as test]
             [clojure.tools.namespace.repl :refer [refresh refresh-all]]
+            expectations
             [figwheel-sidecar.auto-builder :as fig-auto]
             [figwheel-sidecar.core :as fig]
             [react-tutorial-om.core :as core]
