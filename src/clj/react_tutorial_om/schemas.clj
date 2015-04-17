@@ -1,6 +1,5 @@
 (ns react-tutorial-om.schemas
-  (:require [schema.core :as s])
-  (:import (java.util Date)))
+  (:require [schema.core :as s]))
 
 
 (s/defschema Nat
@@ -16,7 +15,7 @@
            (s/optional-key :id) s/Int
            (s/optional-key :round) Nat
            (s/optional-key :competition) s/Keyword
-           (s/optional-key :date) Date}
+           (s/optional-key :date) s/Inst}
           (s/pred (fn [{:keys [winner-score loser-score]}]
                     (> winner-score loser-score))
                   "Winner scores more than loser")))
@@ -29,7 +28,7 @@
            :loser-score Nat
            :id s/Int
            :round Nat
-           (s/optional-key :date) Date}
+           (s/optional-key :date) s/Inst}
           (s/pred (fn [{:keys [winner-score loser-score]}]
                     (> winner-score loser-score))
                   "Winner scores more than loser")))
@@ -39,7 +38,7 @@
    :for Nat
    :against Nat
    :round (s/maybe s/Int)
-   :date Date})
+   :date s/Inst})
 
 
 (s/defschema Ranking
