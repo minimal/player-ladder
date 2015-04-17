@@ -1,12 +1,13 @@
 (ns react-tutorial-om.schemas
-  (:require [schema.core :as s]))
+  #?(:cljs (:require [schema.core :as s :refer-macros [defschema]])
+     :clj (:require [schema.core :as s :refer [defschema]])))
 
 
-(s/defschema Nat
+(defschema Nat
   (s/both s/Int
           (s/pred #(not (neg? %)) "Zero or more")))
 
-(s/defschema Result
+(defschema Result
   "Result is a map of winner/loser names and scores"
   (s/both {:winner s/Str
            :loser s/Str
@@ -20,7 +21,7 @@
                     (> winner-score loser-score))
                   "Winner scores more than loser")))
 
-(s/defschema LeagueResult
+(defschema LeagueResult
   "Result is a map of winner/loser names and scores"
   (s/both {:winner s/Str
            :loser s/Str
@@ -33,7 +34,7 @@
                     (> winner-score loser-score))
                   "Winner scores more than loser")))
 
-(s/defschema Match
+(defschema Match
   {:opposition s/Str
    :for Nat
    :against Nat
@@ -41,7 +42,7 @@
    :date s/Inst})
 
 
-(s/defschema Ranking
+(defschema Ranking
   {(s/optional-key :rd) (s/maybe s/Int)
    :rank Nat,
    :matches [Match]
@@ -54,12 +55,12 @@
    :loses Nat
    :wins Nat})
 
-(s/defschema RankingsResponse
+(defschema RankingsResponse
   {:message s/Str
    :players (s/either [] #{s/Str})
    :rankings [Ranking]})
 
-(s/defschema LeagueRanking
+(defschema LeagueRanking
   {(s/optional-key :rd) (s/maybe s/Int)
    ;; :rank Nat,
    :matches [Match]
@@ -75,26 +76,29 @@
    :diff s/Int
    :points Nat})
 
-(s/defschema LeagueScheduleMatch
+(defschema LeagueScheduleMatch
   {:id s/Int
    :round Nat
    :home s/Str
    :away s/Str})
 
-(s/defschema LeaguesResponse
+(defschema LeaguesResponse
   {:leagues {s/Keyword {:rankings [LeagueRanking]
                         :schedule [LeagueScheduleMatch]
                         :players [s/Str]
                         :name s/Str}}})
 
-(s/defschema LeagueStorage
+(defschema LeagueStorage
   {s/Keyword {:matches [Result]
               :schedule [LeagueScheduleMatch]
               :players [s/Str]
               :name s/Str}})
+#?(:clj
+   (defschema AllResults
+    "Results as stored in edn file"
+    {:singles-ladder           [Result]
+     (s/optional-key :leagues) LeagueStorage}))
 
-(s/defschema AllResults
-  "Results as stored in edn file"
-  {:singles-ladder [Result]
-   (s/optional-key :leagues) LeagueStorage})
-
+(defn check []
+ #?(:clj :clojure
+    :cljs :clojurescript))

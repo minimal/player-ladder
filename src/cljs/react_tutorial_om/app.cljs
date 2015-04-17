@@ -16,6 +16,7 @@
             ;; [clairvoyant.core :as trace :include-macros true]
             [clojure.string :as str]
             ;; [omdev.core :as omdev]
+            [react-tutorial-om.schemas :as sch :refer [check Nat]]
             [react-tutorial-om.utils :refer [guid] :refer-macros [logm inspect breakpoint]])
   (:import [goog History]))
 
@@ -31,33 +32,6 @@
   history)
 
 
-;; Schemas
-
-(s/defschema Nat
-  (s/both s/Int
-          (s/pred #(not (neg? %)) "Zero or more")))
-
-
-(s/defschema Match
-  {:opposition s/Str
-   :for Nat
-   :against Nat
-   (s/optional-key :round) (s/maybe s/Int)
-   :date s/Inst})
-
-(s/defschema LeagueRanking
-  {(s/optional-key :rd) (s/maybe s/Int)
-   (s/optional-key :rank) Nat,
-   :matches [Match]
-   (s/optional-key :round) (s/maybe s/Int)
-   :team s/Str
-   :draw Nat
-   :loses Nat
-   :for Nat
-   :against Nat
-   :diff s/Int
-   :wins Nat
-   :points Nat})
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Util

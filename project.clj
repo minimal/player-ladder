@@ -2,7 +2,7 @@
   :description "FIXME: write this!"
   :url "http://example.com/FIXME"
 
-  :source-paths ["src/clj" "src/cljs" "target/classes"]
+  :source-paths ["src/clj" "src/cljs" "src/cljc" "target/classes"]
   :dependencies [[clj-time "0.9.0"]
                  [clj-http "1.0.1"]
                  [cljs-http "0.1.27"]
@@ -13,7 +13,7 @@
                  [metosin/compojure-api "0.18.0" :exclude [ring-middleware-format prismatic/plumbing]]
                  [org.omcljs/om "0.8.8"]
                  [org.clojure/clojure "1.7.0-beta1"]
-                 [org.clojure/clojurescript "0.0-3196"]
+                 [org.clojure/clojurescript "0.0-3208"]
                  [org.clojure/core.async "0.1.346.0-17112a-alpha"]
                  [org.clojure/tools.reader "0.9.1"]
                  [prismatic/om-tools "0.3.10"]
@@ -78,7 +78,7 @@
                                               :pretty-print false}}}}}}
 
   :cljsbuild {:test-commands {"node" ["node" :node-runner "resources/public/js/app.js"]}
-              :builds {:app {:source-paths ["src/cljs"]
+              :builds {:app {:source-paths ["src/cljs" "src/cljc"]
                              :compiler {:output-to "resources/public/js/app.js"
                                         :output-dir "resources/public/js/out"
                                         :source-map "resources/public/js/out.js.map"

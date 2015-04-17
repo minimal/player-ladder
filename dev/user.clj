@@ -33,7 +33,7 @@
            (.exists (io/file path))))
 
 (def base-fig-config
-  {:builds [{:source-paths ["dev/cljs" "src/cljs"]
+  {:builds [{:source-paths ["dev/cljs" "src/cljs" "src/cljc"]
              :compiler {:output-to "resources/public/js/app.js"
                         :output-dir "resources/public/js/out"
                         :source-map "resources/public/js/out.js.map"
