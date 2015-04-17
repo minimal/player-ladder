@@ -200,7 +200,7 @@
   [db]
   (into {} (for [[l {:keys [matches schedule name players]}] (:leagues @db)]
              [l {:rankings (ranking/matches->league-ranks matches)
-                 :schedule schedule
+                 :schedule (sort-by :round schedule)
                  :players players
                  :name name}])))
 
