@@ -1,4 +1,5 @@
 (ns react-tutorial-om.schemas
+  (:require [clojure.string])
   #?(:cljs (:require [schema.core :as s :refer-macros [defschema]])
      :clj (:require [schema.core :as s :refer [defschema]])))
 
@@ -6,6 +7,10 @@
 (defschema Nat
   (s/both s/Int
           (s/pred #(not (neg? %)) "Zero or more")))
+
+
+(defschema NEmptyStr
+  (s/pred #(not (clojure.string/blank? %)) "Non blank string"))
 
 (defschema Result
   "Result is a map of winner/loser names and scores"
@@ -77,10 +82,10 @@
    :points Nat})
 
 (defschema LeagueScheduleMatch
-  {:id s/Int
+  {(s/optional-key :id) s/Int
    :round Nat
-   :home s/Str
-   :away s/Str})
+   :home NEmptyStr
+   :away NEmptyStr})
 
 (defschema LeaguesResponse
   {:leagues {s/Keyword {:rankings [LeagueRanking]

@@ -177,7 +177,8 @@
                                {:transit-params (update data :round js/parseInt)}))]
         (when (:success res)
           (inspect "saved league schedule:" res)
-          (fetch-leagues app {}))
+          (om/update-state! owner #(assoc % :home "" :away ""))
+          #_(fetch-leagues app {}))
         res))
   )
 
@@ -197,8 +198,12 @@
         (om/set-state! owner key "")))
     (.preventDefault e)))
 
-(defn handle-change [e owner key]
-  (om/set-state! owner key (.. e -target -value)))
+(defn handle-change
+  "Get the value of the event and set the state to the key.
+  Applies f to the value if supplied"
+  [e owner key & [f]]
+  (let [v (.. e -target -value)]
+    (om/set-state! owner key (if f (f v) v))))
 
 (defcomponent ladder-form
   [app owner opts]
@@ -369,27 +374,34 @@
       [:.row
        [:form
         {:class "league-form"
-         :on-submit #(do (handle-league-result-submit
+         :on-submit #(do (.preventDefault %)
+                         (handle-league-result-submit
                           % leagues owner opts
                           (merge state
                                  {:round round :name name
                                   :id id :home home :away away}))
-                         (.preventDefault %))}
+                         )}
         [:.large-10.colums
          [:.large-1.columns round]
          [:.large-4.columns
-          [:label {:for "moo"} home]
-          [:select {:id "moo" :value (:home-score state)
-                    :on-change #(handle-change % owner :home-score)}
-           (for [n (range 4)]
-             [:option {:value (str n)} n])]]
+          [:.row.collapse.prefix-radius
+           [:.small-8.columns
+            [:span.prefix home]]
+           [:.small-4.columns
+            [:select {:id "moo" :value (:home-score state)
+                      :on-change #(handle-change % owner :home-score)}
+             (for [n (range 4)]
+               [:option {:value (str n)} n])]]]]
          [:.large-1.columns "vs"]
          [:.large-4.columns
-          [:label {:for "foo"} away]
-          [:select {:id "foo" :value (:away-score state)
-                    :on-change #(handle-change % owner :away-score)}
-           (for [n (range 4)]
-             [:option {:value (str n)} n])]]
+          [:.row.collapse.prefix-radius
+           [:.small-8.columns
+            [:span.prefix away]]
+           [:.small-4.columns
+            [:select {:id "foo" :value (:away-score state)
+                      :on-change #(handle-change % owner :away-score)}
+             (for [n (range 4)]
+               [:option {:value (str n)} n])]]]]
          [:input {:class "button tiny" :type "submit" :value "Post"}]]]]))))
 
 (defn check-leagues-editable
@@ -411,47 +423,70 @@
   [data owner opts]
   (init-state [_]
     {:editable false
-     :not-auth false  ;; true if verified not authorised
+     :not-auth false                                        ;; true if verified not authorised
      :round 1
-     :home (first (:players data))
-     :away (second (:players data))})
+     :home ""
+     :away ""
+     :error nil})
 
   (render-state [this state]
     (html [:div [:a {:on-click #(check-leagues-editable owner)}
                  "Edit"]
            (if (:editable state)
              [:form {:on-submit #(do (.preventDefault %)
-                                     (handle-league-schedule-submit
-                                       data owner
-                                       (assoc (select-keys state [:round :home :away])
-                                         :name (:name data)))
-                                     )}
-              [:.large-10.colums
-               [:.large-2.columns
-                [:label {:for "round-select"} "Round"]
-                [:select {:id        "round-select" :value (:round state)
-                          :on-change #(handle-change % owner :round)}
-                 (for [n (range 1 (inc (count (:players data))))]
-                   [:option {:value (str n)} n])]]
-               [:.large-4.columns
-                [:label {:for "add-home"} "Home"]
-                [:select {:id        "add-home" :value (:home state)
-                          :on-change #(handle-change % owner :home)}
-                 (for [p (:players data)]
-                   [:option {:value p} p])]]
-               [:.large-4.columns
-                [:label {:for "add-away"} "Away"]
-                [:select {:id        "add-away" :value (:away state)
-                          :on-change #(handle-change % owner :away)}
-                 (for [p (:players data)]
-                   [:option {:value p} p])]]
-               [:input {:class "button tiny" :type "submit" :value "Add"}]]]
+                                     (try (handle-league-schedule-submit
+                                            data owner (:name data)
+                                            (select-keys state [:round :home :away]))
+                                          (catch :default e
+                                            (inspect "error")
+                                            (om/set-state! owner [:error] e))))}
+              [:.row
+               [:.large-12.colums
+                [:.small-2.columns
+                 [:.row.collapse.prefix-radius
+                  [:.small-5.columns
+                   [:span.prefix "R"]]
+                  [:.small-7.columns
+                   [:select {:id "round-select" :value (:round state)
+                             :on-change #(handle-change % owner :round js/parseInt)}
+                    (for [n (range 1 (inc (count (:players data))))]
+                      [:option {:value (str n)} n])]]]]
+                [:.large-3.columns
+                 [:.row.collapse.prefix-radius
+                  [:.small-2.columns
+                   [:span.prefix "H"]]
+                  [:.small-10.columns
+                   [:select {:id "add-home" :value (:home state)
+                             :on-change #(handle-change % owner :home)}
+                    (for [p (cons nil (:players data))]
+                      [:option {:value p} p])]]]]
+                [:.small-3.columns
+                 [:.row.collapse.prefix-radius
+                  [:.small-2.columns
+                   [:span.prefix "A"]]
+                  [:.small-10.columns
+                   [:select {:id "add-away" :value (:away state)
+                             :on-change #(handle-change % owner :away)}
+                    (for [p (cons nil (:players data))]
+                      [:option {:value p} p])]]
+                  ]
+                 ]
+                [:.small-2.columns
+                 [:input {:class "button tiny" :type "submit" :value "Add"}]]]]
+
+              (when-let [err (:error state)]
+                (let [msg (condp = (:type (.-data err))
+                            :schema.core/error "Invalid input"
+                            (.-message err))]
+                  (go (<! (timeout 5000))
+                      (om/set-state! owner :error nil))
+                  [:small.error (str "error: " msg)]))]
              ;; else
              (when (:not-auth state)
                (go (<! (timeout 10000))
                    (om/set-state! owner :not-auth false))
-               [:.alert-box.warning.radius "Not authorised to edit"]))]))
-  )
+               [:.alert-box.warning.radius "Not authorised to edit"]))])
+    ))
 
 (defcomponent league-schedule [{:keys [name schedule] :as data} owner opts]
   (render
@@ -639,10 +674,6 @@
 (sec/defroute about-page "/about" []
   (logm "in about")
   (put! nav-ch [:about []]))
-
-#_(sec/defroute "*" []
-    (main))
-
 
 
 (defonce set-location
