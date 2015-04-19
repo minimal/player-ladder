@@ -213,5 +213,5 @@
                                    :id 1
                                    :round 1}
                                   (:pub-ch event-handler))
-                        (Thread/sleep 50)
+                        (Thread/sleep 100)
                         (component/stop event-handler))))
