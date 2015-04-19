@@ -22,8 +22,7 @@
 
 (defn browser-repl []
   (let [repl-env (weasel/repl-env :ip "0.0.0.0" :port 9001)]
-    (piggieback/cljs-repl :repl-env repl-env)
-    (piggieback/cljs-eval {} repl-env '(in-ns 'react-tutorial-om.core) {})))
+    (piggieback/cljs-repl repl-env)))
 
 (defonce fig-server (atom nil))
 (defonce fig-builder (atom nil))
