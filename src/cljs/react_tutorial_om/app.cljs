@@ -165,7 +165,7 @@
                               app {:url (str "/leagues/" name "/result")})
           (om/transact! app [(keyword name) :schedule]
                         (fn [s] (remove #(= (:id %) id) s))))
-      (logm "Warning: invalid score"))
+      (throw (js/Error. "Invalid score")))
     (inspect "onsubmit" result "winner" winner)))
 
 (s/defn ^:always-validate handle-league-schedule-submit
@@ -366,43 +366,54 @@
           [:td (om/build last-10-games matches)]])))
 
 (defcomponent league-schedule-row [{:keys [round home id away name] :as app} owner opts]
-  (init-state [_] {:home-score 0 :away-score 0})
+  (init-state [_] {:home-score 0 :away-score 0 :error nil})
   (render-state
    [_ state]
    (let [leagues (om/observe owner (league-items))]
      (html
-      [:.row
        [:form
         {:class "league-form"
          :on-submit #(do (.preventDefault %)
-                         (handle-league-result-submit
-                          % leagues owner opts
-                          (merge state
-                                 {:round round :name name
-                                  :id id :home home :away away}))
+                         (try (handle-league-result-submit
+                                % leagues owner opts
+                                (merge state
+                                       {:round round :name name
+                                        :id id :home home :away away}))
+                              (catch :default e
+                                (inspect e)
+                                (om/set-state! owner [:error] e)))
                          )}
-        [:.large-10.colums
-         [:.large-1.columns round]
-         [:.large-4.columns
-          [:.row.collapse.prefix-radius
-           [:.small-8.columns
-            [:span.prefix home]]
-           [:.small-4.columns
-            [:select {:id "moo" :value (:home-score state)
-                      :on-change #(handle-change % owner :home-score)}
-             (for [n (range 4)]
-               [:option {:value (str n)} n])]]]]
-         [:.large-1.columns "vs"]
-         [:.large-4.columns
-          [:.row.collapse.prefix-radius
-           [:.small-8.columns
-            [:span.prefix away]]
-           [:.small-4.columns
-            [:select {:id "foo" :value (:away-score state)
-                      :on-change #(handle-change % owner :away-score)}
-             (for [n (range 4)]
-               [:option {:value (str n)} n])]]]]
-         [:input {:class "button tiny" :type "submit" :value "Post"}]]]]))))
+        [:.row
+         [:.large-10.colums
+          [:.large-1.columns round]
+          [:.large-4.columns
+           [:.row.collapse.prefix-radius
+            [:.small-8.columns
+             [:span.prefix home]]
+            [:.small-4.columns
+             [:select {:id "moo" :value (:home-score state)
+                       :on-change #(handle-change % owner :home-score)}
+              (for [n (range 4)]
+                [:option {:value (str n)} n])]]]]
+          [:.large-1.columns "vs"]
+          [:.large-4.columns
+           [:.row.collapse.prefix-radius
+            [:.small-8.columns
+             [:span.prefix away]]
+            [:.small-4.columns
+             [:select {:id "foo" :value (:away-score state)
+                       :on-change #(handle-change % owner :away-score)}
+              (for [n (range 4)]
+                [:option {:value (str n)} n])]]]]
+          [:input {:class "button tiny" :type "submit" :value "Post"}]]]
+        (when-let [err (:error state)]
+          (let [msg (condp = (:type (.-data err))
+                      :schema.core/error "Invalid input"
+                      (.-message err))]
+            (go (<! (timeout 5000))
+                (om/set-state! owner :error nil))
+            [:small.error (str "Error: " msg)]))
+        ]))))
 
 (defn check-leagues-editable
   "Calls editable endpoint, sets state
