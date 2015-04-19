@@ -116,8 +116,9 @@
           [:thead [:tr (map #(tdom/th %) ["winner" "" "" "loser"])]]
           [:tbody (om/build-all ladder-match-row (take 20 (reverse matches)))]])))
 
-(defn save-match!
-  [match app opts]
+(s/defn ^:always-validate save-match!
+  "Save Ladder match"
+  [match :- sch/Result app opts]
   (do (om/transact! app [:matches]
                     (fn [matches] (conj matches match)))
       (go (let [res (<! (http/post (:url opts) {:transit-params match}))]
@@ -137,6 +138,7 @@
 (defn save-league-match!
   "Post league result"
   [match app opts]
+  {:pre [(s/validate sch/LeagueResult match)]}
   (go (let [res (<! (http/post (:url opts) {:transit-params match}))]
         (when (:success res)
           (inspect "saved league:" res)
@@ -166,9 +168,9 @@
       (logm "Warning: invalid score"))
     (inspect "onsubmit" result "winner" winner)))
 
-(defn handle-league-schedule-submit
+(s/defn ^:always-validate handle-league-schedule-submit
   "Adds a new game to the schedule"
-  [app owner {:keys [home away name round] :as data}]
+  [app owner name {:keys [home away round] :as data} :- sch/LeagueScheduleMatch]
   {:pre [(not= home away)]}
   (inspect data)
   (go (let [res (<! (http/post (str "/leagues" "/schedule/" name)
