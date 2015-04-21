@@ -198,9 +198,10 @@
 
 (defn- handle-get-leagues
   [db]
-  (into {} (for [[l {:keys [matches schedule name players]}] (:leagues @db)]
+  (into {} (for [[l {:keys [matches schedule name players img]}] (:leagues @db)]
              [l {:rankings (ranking/matches->league-ranks matches)
                  :schedule (sort-by :round schedule)
+                 :img img
                  :players players
                  :name name}])))
 

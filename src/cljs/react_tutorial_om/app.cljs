@@ -519,9 +519,8 @@
    (html
     [:div
      [:h3 (:name league)]
-     (if (= "first-division" (:name league))
-       [:img {:src "/img/pm_tt.png" :style {:height "150px"}}]
-       [:img {:src "/img/pingpongblue.png" :style {:height "150px"}}])
+     (if-let [src (:img league)]
+       [:img {:src src :style {:height "150px"}}])
      [:table.rankingTable
       [:thead
        (for [header ["" "" "" "P" "W" "L" "F" "A" "Diff" "Pts" "Last 10 Games"]]
