@@ -91,13 +91,13 @@
   {:leagues {s/Keyword {:rankings [LeagueRanking]
                         :schedule [LeagueScheduleMatch]
                         :players [s/Str]
-                        (s/optional-key :img) s/Str
+                        (s/optional-key :img) (s/maybe s/Str)
                         :name s/Str}}})
 
 (defschema LeagueStorage
   {s/Keyword {:matches [Result]
               :schedule [LeagueScheduleMatch]
-              (s/optional-key :img) s/Str
+              (s/optional-key :img) (s/maybe s/Str)
               :players [s/Str]
               :name s/Str}})
 #?(:clj
