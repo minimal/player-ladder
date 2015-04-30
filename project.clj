@@ -10,14 +10,14 @@
                  [compojure "1.3.3"]
                  [buddy/buddy-auth "0.5.1"]
                  [environ "1.0.0"]
-                 [metosin/compojure-api "0.18.0" :exclude [ring-middleware-format prismatic/plumbing]]
+                 [metosin/compojure-api "0.20.0"]
                  [org.omcljs/om "0.8.8"]
                  [org.clojure/clojure "1.7.0-beta2"]
                  [org.clojure/clojurescript "0.0-3211"]
                  [org.clojure/core.async "0.1.346.0-17112a-alpha"]
                  [org.clojure/tools.reader "0.9.2"]
-                 [prismatic/om-tools "0.3.10"]
-                 [prismatic/schema "0.3.7"]
+                 [prismatic/om-tools "0.3.11"]
+                 [prismatic/schema "0.4.2"]
                  [prone "0.8.1"]
                  [ring "1.3.2"]
                  [metosin/ring-middleware-format "0.6.0"]
@@ -29,13 +29,15 @@
                  [log4j "1.2.17" :exclusions [javax.mail/mail
                                               javax.jms/jms
                                               com.sun.jdmk/jmxtools
-                                              com.sun.jmx/jmxri]]]
+                                              com.sun.jmx/jmxri]]
+                 ]
 
   :aliases {"test" ["expectations"]}
   :plugins [[lein-cljsbuild "1.0.5"]
             [lein-cljfmt "0.1.10"]
             [lein-environ "1.0.0"]
             [lein-expectations "0.0.8"]
+            [lein-autoexpect "1.4.2"]
             #_[lein-figwheel "0.2.5" :exclusions [org.clojure/tools.nrepl]]]
 
   :cljfmt {:indents {do-template [[:block 1]]
@@ -51,8 +53,8 @@
   :profiles {:dev {:dependencies [[javax.servlet/servlet-api "2.5"]
                                   [expectations "2.0.16"]
                                   [weasel "0.6.0"]
-                                  [figwheel "0.2.7-SNAPSHOT"]
-                                  [figwheel-sidecar "0.2.7-SNAPSHOT"]
+                                  [figwheel "0.2.8"]
+                                  [figwheel-sidecar "0.2.8"]
                                   [com.cemerick/piggieback "0.2.0"]
                                   ;; [omdev "0.1.3-SNAPSHOT"]
                                   [spellhouse/clairvoyant "0.0-48-gf5e59d3"]

@@ -6,10 +6,10 @@
             [clojure.java.io :as io]
             [clojure.pprint :refer [pprint]]
             [clojure.string :as str]
-            [compojure.api.routes :refer [with-routes]]
+            [compojure.api.routes :refer [api-root]]
             [compojure.api.sweet
              :refer
-             [GET* POST* context swagger-docs swagger-ui swaggered]]
+             [GET* POST* context* swagger-docs swagger-ui]]
             [compojure.core :refer [GET]]
             [compojure.route :as route]
             [com.stuartsierra.component :as component]
@@ -218,59 +218,53 @@
   )
 
 (defn make-routes [is-dev? db event-ch]
-  (with-routes
-    (GET "/" [] (resource-response "index.html" {:root "public"}))
-    (route/resources "/")
-    (route/resources "/react" {:root "react"})
-    (swagger-ui :swagger-docs "/api/docs")
-    (swagger-docs "/api/docs")
-    (GET "/app" [] (resource-response "index.html" {:root "public"}))
-    ;;(GET "/init" [] (init! db) "inited")
-    (swaggered
-     "matches"
-     :description "Matches"
-     (context
-      "/matches" []
-      (GET* "/" []
-            :return {:message s/Str
-                     :matches [{s/Keyword s/Any}]}
-            :summary "all the matches"
-            (ok
-             {:message "Here's the results!"
-              :matches (take-last 20 (:singles-ladder @db))}))
-      (POST* "/" req
-             :body [result sch/Result]
-             (ok (save-match! result db)))))
-    (swaggered
-     "rankings"
-     :description "Rankings"
-     (context
-      "/rankings" []
-      (GET* "/" []
-            :return sch/RankingsResponse
-            (ok
-             (handle-rankings (:singles-ladder @db))))))
-    (swaggered
-     "leagues"
-     :description "Leagues"
-     (context
-      "/leagues" []
-      (GET* "/" []
-            :return sch/LeaguesResponse
-            (ok
-             {:leagues (handle-get-leagues db)}))
-      (POST* "/:league/result" [league] ;TODO: take id in post url?
-             :body [result sch/LeagueResult]
-             (ok (handle-league-result db (keyword league) result event-ch)))
-      (GET* "/editable" req
-            (if-not (authenticated? req)
-              (do (prn "no auth")
-                  (throw-unauthorized))
-              (ok)))
-      (POST* "/schedule/:league" [league]
-             :body [fixture s/Any]
-             (ok (handle-post-league-schedule db league fixture)))))
-    (route/not-found "Page not found")))
+  (api-root
+   (GET "/" [] (resource-response "index.html" {:root "public"}))
+   (route/resources "/")
+   (route/resources "/react" {:root "react"})
+   (swagger-ui :swagger-docs "/api/docs")
+   (swagger-docs "/api/docs")
+   (GET "/app" [] (resource-response "index.html" {:root "public"}))
+   ;;(GET "/init" [] (init! db) "inited")
+   (context*
+    "/matches" []
+    :tags ["matches"]
+    (GET* "/" []
+          :return {:message s/Str
+                   :matches [{s/Keyword s/Any}]}
+          :summary "all the matches"
+          (ok
+           {:message "Here's the results!"
+            :matches (take-last 20 (:singles-ladder @db))}))
+    (POST* "/" req
+           :body [result sch/Result]
+           (ok (save-match! result db))))
+   (context*
+    "/rankings" []
+    :tags ["rankings"]
+    (GET* "/" []
+          :return sch/RankingsResponse
+          (ok
+           (handle-rankings (:singles-ladder @db)))))
+   (context*
+    "/leagues" []
+    :tags ["leagues"]
+    (GET* "/" []
+          :return sch/LeaguesResponse
+          (ok
+           {:leagues (handle-get-leagues db)}))
+    (POST* "/:league/result" [league] ;TODO: take id in post url?
+           :body [result sch/LeagueResult]
+           (ok (handle-league-result db (keyword league) result event-ch)))
+    (GET* "/editable" req
+          (if-not (authenticated? req)
+            (do (prn "no auth")
+                (throw-unauthorized))
+            (ok)))
+    (POST* "/schedule/:league" [league]
+           :body [fixture s/Any]
+           (ok (handle-post-league-schedule db league fixture))))
+   (route/not-found "Page not found")))
 
 (defn wrap-schema-errors [handler]
   (fn [req]
