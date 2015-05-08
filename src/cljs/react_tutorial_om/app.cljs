@@ -664,12 +664,6 @@
            app-state
            {:target (.getElementById js/document "content")}))
 
-(defn about []
-  (om/root about-page-view
-           app-state
-           {:target (.getElementById js/document "content")
-            :shared {:route :about}}))
-
 (sec/defroute something-page "/leagues" []
   (logm "in leauges")
   (put! nav-ch [:leagues []]))
