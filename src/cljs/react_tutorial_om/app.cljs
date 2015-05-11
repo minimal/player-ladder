@@ -596,8 +596,14 @@
                        :display (get-in app [:player-view :display])})))))
 
 
+(defn filter-schedule [team schedule]
+  (filter #(or (= (:home %) team)
+               (= (:away %) team))
+          schedule))
+
 (defcomponent league-team-summary [{:keys [rank against points matches
-                                           for team change loses wins diff] :as data}
+                                           for team change loses wins diff
+                                           schedule] :as data}
                                    owner opts]
   (render
    [_]
@@ -615,7 +621,14 @@
            [:li.bullet-item (str "Average sets per match: "
                                  (.toFixed (/ (transduce (map :for) + matches)
                                               (count matches))
-                                           2))]]]
+                                           2))]
+           [:li.bullet-item
+            [:div
+             [:p "Next games: "]
+             (for [game (take 2 (filter-schedule team schedule))
+                   :let [opp (some #(if (not= team %) %)
+                                   ((juxt :home :away) game))]]
+               [:p (str  opp ". Rd: " (:round game))])]]]]
          )))
 
 (defcomponent leagues-page-view [{:keys [leagues path] :as data} owner opts]
@@ -638,12 +651,14 @@
                (om/build league-list (leagues (keyword (first path)))))))
      (tdom/div {:className "large-3 columns"}
          (match (om/value path)
-                [league [:team team]]
-                (if-let [team-row (->> (get-in leagues [(keyword league) :rankings])
-                                       (filter #(= team (:team %)))
-                                       first )]
-                  (om/build league-team-summary team-row))
-                :else nil)
+           [league [:team team]]
+           (if-let [team-row (->> (get-in leagues [(keyword league) :rankings])
+                                  (filter #(= team (:team %)))
+                                  first )]
+             (om/build league-team-summary
+                       (assoc team-row
+                              :schedule (get-in leagues [(keyword league) :schedule]))))
+           :else nil)
        )))
 
   (init-state
