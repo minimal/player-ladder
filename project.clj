@@ -55,10 +55,13 @@
 
   :profiles {:dev {:dependencies [[javax.servlet/servlet-api "2.5"]
                                   [expectations "2.0.16"]
-                                  [weasel "0.6.0"]
-                                  [figwheel "0.3.1"]
-                                  [figwheel-sidecar "0.3.1"]
-                                  [com.cemerick/piggieback "0.2.1"]
+                                  [weasel "0.6.0" :exclusions [org.clojure/clojurescript]]
+                                  [figwheel-sidecar "0.3.1"
+                                   :exclusions [org.clojure/clojurescript]]
+                                  [figwheel "0.3.1"
+                                   :exclusions [org.clojure/clojurescript]]
+                                  [com.cemerick/piggieback "0.2.1"
+                                   :exclusions [org.clojure/clojurescript]]
                                   ;; [omdev "0.1.3-SNAPSHOT"]
                                   [spellhouse/clairvoyant "0.0-48-gf5e59d3"]
                                   [org.clojure/tools.namespace "0.2.10"]
