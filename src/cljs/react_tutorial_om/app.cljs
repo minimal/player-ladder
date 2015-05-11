@@ -3,6 +3,7 @@
   (:require-macros [cljs.core.async.macros :refer [go alt!]])
   (:require [goog.events :as events]
             [cljs.core.async :as async :refer [put! <! >! chan timeout]]
+            [cljs.core.match :refer-macros [match]]
             [om.core :as om]
             [om.dom :as dom]
             [om-tools.dom :as tdom]
@@ -337,7 +338,7 @@
             (om/build ranking-list (:rankings app) {:opts opts}))))
 
 (defcomponent league-row [{:keys [team wins loses points matches for against diff
-                                  rank change]} ;;:- (schema/cursor LeagueRanking)
+                                  rank change league-name] :as data} ;;:- (schema/cursor LeagueRanking)
                           owner opts]
   (render
    [_]
@@ -355,7 +356,7 @@
              :+ "▲"
              :- "▼"
              "")]
-          [:td team]
+          [:td [:a {:href (str "#/leagues/" league-name "/team/" team)} team]]
           [:td (+ wins loses)]
           [:td wins]
           [:td loses]
@@ -526,7 +527,10 @@
        (for [header ["" "" "" "P" "W" "L" "F" "A" "Diff" "Pts" "Last 10 Games"]]
          [:th header])]
       [:tbody
-       (om/build-all league-row (:rankings league) {:key :team})]]
+       (om/build-all league-row (mapv #(assoc % :league-name (:name league))
+                                      (:rankings league)
+                                      )
+                     {:key :team})]]
      (om/build league-schedule (select-keys league [:schedule :name :players]))])))
 
 (defcomponent status-box [conn? owner]
@@ -592,24 +596,56 @@
                        :display (get-in app [:player-view :display])})))))
 
 
+(defcomponent league-team-summary [{:keys [rank against points matches
+                                           for team change loses wins diff] :as data}
+                                   owner opts]
+  (render
+   [_]
+   (inspect (keys data))
+   (html [:div
+          [:h4 "Player Stats"]
+          [:ul.pricing-table
+           [:li.title team]
+           [:li.price rank]
+           [:li.bullet-item (str  wins " - " loses)]
+           [:li.bullet-item (str "Last match: " (let [game (last matches)]
+                                                  (str (:for game) " - " (:against game)
+                                                       " against " (:opposition game)
+                                                       " @ " (:date game))))]
+           [:li.bullet-item (str "Average sets per match: "
+                                 (.toFixed (/ (transduce (map :for) + matches)
+                                              (count matches))
+                                           2))]]]
+         )))
+
 (defcomponent leagues-page-view [{:keys [leagues path] :as data} owner opts]
   (render
    [_]
    (tdom/div {:className "row results-row"}
-     (tdom/div {:className "large-2 columns"
-                :dangerouslySetInnerHTML {:__html "&nbsp;"}})
+       (tdom/div {:className "large-2 columns"
+                  :dangerouslySetInnerHTML {:__html "&nbsp;"}})
      (tdom/div {:className "large-7 columns"}
-       #_(om/build status-box (:conn? data))
-       (om/build navigation-view {})
-       (tdom/h3 "Leagues")
+         #_(om/build status-box (:conn? data))
+         (om/build navigation-view {})
+         (tdom/h3 "Leagues")
 
-       (tdom/ul (for [[league _] leagues]
-                  (tdom/li {:key (name league)} (tdom/a {:href (str "#/leagues/" (name league))}
-                                                        (name league)))))
-       (if (seq path)
-         (tdom/div {:style (display (seq path))}
-           (om/build league-list (leagues (keyword (first path)))))))
-     (tdom/div {:className "large-3 columns" :dangerouslySetInnerHTML {:__html "&nbsp;"}})))
+         (tdom/ul (for [[league _] leagues]
+                    (tdom/li {:key (name league)}
+                             (tdom/a {:href (str "#/leagues/" (name league))}
+                                     (name league)))))
+         (if (seq path)
+           (tdom/div {:style (display (seq path))}
+               (om/build league-list (leagues (keyword (first path)))))))
+     (tdom/div {:className "large-3 columns"}
+         (match (om/value path)
+                [league [:team team]]
+                (if-let [team-row (->> (get-in leagues [(keyword league) :rankings])
+                                       (filter #(= team (:team %)))
+                                       first )]
+                  (om/build league-team-summary team-row))
+                :else nil)
+       )))
+
   (init-state
    [_]
    {:mounted true})
@@ -671,6 +707,9 @@
 (sec/defroute league "/leagues/:id" [id]
   (inspect id)
   (put! nav-ch [:leagues [id]]))
+
+(sec/defroute league-team "/leagues/:id/team/:team" [id team]
+  (put! nav-ch [:leagues [id [:team team]]]))
 
 (sec/defroute root-page "/" []
   (put! nav-ch [:ladder []]))
