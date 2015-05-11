@@ -595,11 +595,9 @@
                                        (:rankings app)))
                        :display (get-in app [:player-view :display])})))))
 
-
-(defn filter-schedule [team schedule]
+(defn filter-schedule [team]
   (filter #(or (= (:home %) team)
-               (= (:away %) team))
-          schedule))
+               (= (:away %) team))))
 
 (defcomponent league-team-summary [{:keys [rank against points matches
                                            for team change loses wins diff
@@ -625,7 +623,7 @@
            [:li.bullet-item
             [:div
              [:p "Next games: "]
-             (for [game (take 2 (filter-schedule team schedule))
+             (for [game (sequence (comp (filter-schedule team) (take 2)) schedule)
                    :let [opp (some #(if (not= team %) %)
                                    ((juxt :home :away) game))]]
                [:p (str  opp ". Rd: " (:round game))])]]]]
