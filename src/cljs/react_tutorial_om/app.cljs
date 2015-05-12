@@ -337,15 +337,23 @@
             (om/build ranking-list (:rankings app) {:opts opts}))))
 
 (defcomponent league-row [{:keys [team wins loses points matches for against diff
-                                  rank change league-name] :as data} ;;:- (schema/cursor LeagueRanking)
+                                  rank change league-name bands] :as data} ;;:- (schema/cursor LeagueRanking)
                           owner opts]
   (render
    [_]
-   (html [:tr {:style (cond
-                        (< 10 rank) {:background-color "#EEAAAA"}
-                        (= 10 rank) {:background-color "#FFCC00"}
-                        (> 3 rank) {:background-color "#AAEEAA"}
-                        :else nil)}
+   (inspect bands)
+   (html [:tr {:style (if bands
+                        (cond
+                          (<= (:relegation bands) rank)
+                          {:background-color "#EEAAAA"}
+
+                          (>= (:playoff bands) rank (inc (:promotion bands)))
+                          {:background-color "#DDEEDD"}
+
+                          (>= (:promotion bands) rank)
+                          {:background-color "#AAEEAA"}
+
+                          :else nil))}
           [:td rank]
           [:td {:style {:color (case change
                                  :+ "#2c7e00"
@@ -528,7 +536,9 @@
        (for [header ["" "" "" "P" "W" "L" "F" "A" "Diff" "Pts" "Last 10 Games"]]
          [:th header])]
       [:tbody
-       (om/build-all league-row (mapv #(assoc % :league-name (:name league))
+       (om/build-all league-row (mapv #(assoc %
+                                              :league-name (:name league)
+                                              :bands (:bands league))
                                       (:rankings league)
                                       )
                      {:key :team})]]

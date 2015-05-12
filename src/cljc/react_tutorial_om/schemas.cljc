@@ -92,6 +92,9 @@
    :players [s/Str]
    (s/optional-key :sets-per-match) s/Int
    (s/optional-key :img) (s/maybe s/Str)
+   (s/optional-key :bands) (s/maybe {:promotion s/Int
+                                     :playoff s/Int
+                                     :relegation s/Int})
    :name s/Str})
 
 (defschema LeaguesResponse
