@@ -336,24 +336,26 @@
             (tdom/h3 "Rankings")
             (om/build ranking-list (:rankings app) {:opts opts}))))
 
+(defn position-class [bands rank]
+  (if bands
+    (cond
+      (<= (:relegation bands) rank)
+      "relegation"
+
+      (>= (:playoff bands) rank (inc (:promotion bands)))
+      "playoff"
+
+      (>= (:promotion bands) rank)
+      "promotion"
+
+      :else nil)))
+
 (defcomponent league-row [{:keys [team wins loses points matches for against diff
                                   rank change league-name bands] :as data} ;;:- (schema/cursor LeagueRanking)
                           owner opts]
   (render
    [_]
-   (inspect bands)
-   (html [:tr {:style (if bands
-                        (cond
-                          (<= (:relegation bands) rank)
-                          {:background-color "#EEAAAA"}
-
-                          (>= (:playoff bands) rank (inc (:promotion bands)))
-                          {:background-color "#DDEEDD"}
-
-                          (>= (:promotion bands) rank)
-                          {:background-color "#AAEEAA"}
-
-                          :else nil))}
+   (html [:tr {:class (position-class bands rank)}
           [:td rank]
           [:td {:style {:color (case change
                                  :+ "#2c7e00"
