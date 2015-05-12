@@ -538,11 +538,12 @@
           (html [:.alert-box.warning.radius {:style (display (not conn?))}
                  "Connection problem!"])))
 
-(defcomponent navigation-view [_ _]
+(defcomponent navigation-view [app _]
   (render
    [_]
    (let [style {:style {:margin "10px;"}}]
      (tdom/div style
+       (om/build status-box (:conn? app))
        (tdom/a (assoc style :href "#/")
                "Ladder")
        (tdom/a (assoc style :href "#/leagues")
@@ -577,7 +578,6 @@
      (tdom/div {:class "large-2 columns"
                 :dangerouslySetInnerHTML {:__html "&nbsp;"}})
      (tdom/div {:class "large-7 columns"}
-       (om/build status-box (:conn? app))
 
        (om/build rankings-box app
                  {:opts {:poll-interval 2000
@@ -690,7 +690,7 @@
          (tdom/div {:class "large-2 columns"
                     :dangerouslySetInnerHTML {:__html "&nbsp;"}})
          (tdom/div {:class "large-7 columns"}
-           (om/build navigation-view {}))
+           (om/build navigation-view (select-keys app [:conn?])))
          (tdom/div {:class "large-3 columns"
                     :dangerouslySetInnerHTML {:__html "&nbsp;"}}))
      (case view
