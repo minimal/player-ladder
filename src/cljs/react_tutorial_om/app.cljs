@@ -632,30 +632,28 @@
 (defcomponent leagues-page-view [{:keys [leagues path] :as data} owner opts]
   (render
    [_]
-   (tdom/div {:className "row results-row"}
-       (tdom/div {:className "large-2 columns"
-                  :dangerouslySetInnerHTML {:__html "&nbsp;"}})
-     (tdom/div {:className "large-7 columns"}
-         #_(om/build status-box (:conn? data))
-         (tdom/h3 "Leagues")
-
-         (tdom/ul (for [[league _] leagues]
-                    (tdom/li {:key (name league)}
-                             (tdom/a {:href (str "#/leagues/" (name league))}
-                                     (name league)))))
-         (if (seq path)
-           (tdom/div {:style (display (seq path))}
-               (om/build league-list (leagues (keyword (first path)))))))
-     (tdom/div {:className "large-3 columns"}
-         (match (om/value path)
-           [league [:team team]]
-           (if-let [team-row (->> (get-in leagues [(keyword league) :rankings])
-                                  (filter #(= team (:team %)))
-                                  first )]
-             (om/build league-team-summary
-                       (assoc team-row
-                              :schedule (get-in leagues [(keyword league) :schedule]))))
-           :else nil)
+   (tdom/div {:class "row results-row"}
+     (tdom/div {:class "large-2 columns"
+                :dangerouslySetInnerHTML {:__html "&nbsp;"}})
+     (tdom/div {:class "large-7 columns"}
+       (tdom/h3 "Leagues")
+       (tdom/ul (for [[league _] leagues]
+                  (tdom/li {:key (name league)}
+                           (tdom/a {:href (str "#/leagues/" (name league))}
+                                   (name league)))))
+       (if (seq path)
+         (tdom/div {:style (display (seq path))}
+           (om/build league-list (leagues (keyword (first path)))))))
+     (tdom/div {:class "large-3 columns"}
+       (match (om/value path)
+         [league [:team team]]
+         (if-let [team-row (->> (get-in leagues [(keyword league) :rankings])
+                                (filter #(= team (:team %)))
+                                first )]
+           (om/build league-team-summary
+                     (assoc team-row
+                            :schedule (get-in leagues [(keyword league) :schedule]))))
+         :else nil)
        )))
 
   (init-state
@@ -676,13 +674,13 @@
 (defcomponent about-page-view [_ owner]
   (render
    [_]
-   (dom/div #js {:className "row results-row"}
-            (dom/div #js {:className "large-2 columns"
-                          :dangerouslySetInnerHTML #js {:__html "&nbsp;"}})
-            (dom/div #js {:className "large-7 columns"}
-                     (tdom/div nil (tdom/a {:href "https://github.com/minimal/player-ladder"}
-                                           "Fork me on Github")))
-            (dom/div #js {:className "large-3 columns" :dangerouslySetInnerHTML #js {:__html "&nbsp;"}}))))
+   (tdom/div {:class "row results-row"}
+     (tdom/div {:class "large-2 columns"
+                :dangerouslySetInnerHTML #js {:__html "&nbsp;"}})
+     (tdom/div {:class "large-7 columns"}
+       (tdom/div (tdom/a {:href "https://github.com/minimal/player-ladder"}
+                         "Fork me on Github")))
+     (tdom/div {:class "large-3 columns" :dangerouslySetInnerHTML {:__html "&nbsp;"}}))))
 
 (defcomponent top-level [{:keys [view path] :as app} owner]
   (render
