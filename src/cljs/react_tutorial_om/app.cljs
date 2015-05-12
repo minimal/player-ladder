@@ -573,27 +573,27 @@
    (async/close! (om/get-state owner :select-player-ch)))
   (render-state
    [this {:keys [select-player-ch]}]
-   (dom/div #js {:className "row"}
-            (dom/div #js {:className "large-2 columns"
-                          :dangerouslySetInnerHTML #js {:__html "&nbsp;"}})
-            (dom/div #js {:className "large-7 columns"}
-                     (om/build status-box (:conn? app))
-                     (om/build navigation-view {})
-                     (om/build rankings-box app
-                               {:opts {:poll-interval 2000
-                                       :url "/rankings"
-                                       :select-player-ch select-player-ch}})
-                     (om/build ladder-box app
-                               {:opts {:poll-interval 2000
-                                       :url "/matches"}}))
-            (dom/div #js {:className "large-3 columns"}
-                     (om/build
-                      player-summary
-                      {:data  (first
-                               (filter #(= (:team %)
-                                           (get-in app [:player-view :player]))
-                                       (:rankings app)))
-                       :display (get-in app [:player-view :display])})))))
+   (tdom/div {:class "row"}
+     (tdom/div {:class "large-2 columns"
+                :dangerouslySetInnerHTML {:__html "&nbsp;"}})
+     (tdom/div {:class "large-7 columns"}
+       (om/build status-box (:conn? app))
+       (om/build navigation-view {})
+       (om/build rankings-box app
+                 {:opts {:poll-interval 2000
+                         :url "/rankings"
+                         :select-player-ch select-player-ch}})
+       (om/build ladder-box app
+                 {:opts {:poll-interval 2000
+                         :url "/matches"}}))
+     (tdom/div {:class "large-3 columns"})
+     (om/build
+      player-summary
+      {:data  (first
+               (filter #(= (:team %)
+                           (get-in app [:player-view :player]))
+                       (:rankings app)))
+       :display (get-in app [:player-view :display])}))))
 
 (defn filter-schedule [team]
   (filter #(or (= (:home %) team)
