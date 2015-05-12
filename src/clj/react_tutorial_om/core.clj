@@ -6,19 +6,25 @@
             [clojure.java.io :as io]
             [clojure.pprint :refer [pprint]]
             [clojure.string :as str]
-            [compojure.api.routes :refer [with-routes]]
+            [compojure.api.routes :refer [api-root]]
             [compojure.api.sweet
              :refer
-             [GET* POST* context swagger-docs swagger-ui swaggered]]
+             [GET* POST* context* swagger-docs swagger-ui]]
             [compojure.core :refer [GET]]
             [compojure.route :as route]
             [com.stuartsierra.component :as component]
+            [buddy.auth :refer [authenticated? throw-unauthorized]]
+            [buddy.auth.backends.session :refer [session-backend]]
+            [buddy.auth.middleware :refer [wrap-authentication wrap-authorization]]
             [prone.debug :refer [debug]]
             [prone.middleware :as prone]
             [react-tutorial-om.ranking :as ranking]
             [react-tutorial-om.schemas :as sch]
             ring.adapter.jetty
             [ring.middleware.format :refer [wrap-restful-format]]
+            [ring.middleware.session :refer [wrap-session]]
+            [ring.middleware.params :refer [wrap-params]]
+            [ring.util.response :refer [redirect]]
             [ring.util.http-response :as http-resp :refer [ok resource-response]]
             [schema.core :as s]
             [slingshot.slingshot :refer [throw+ try+]]))
@@ -78,7 +84,7 @@
 
 (defn attach-player-matches [results rankings]
   (for [rank rankings]
-    (assoc-in rank [:matches] (ranking/show-matches (:team rank) results))))
+    (assoc rank :matches (ranking/show-matches (:team rank) results))))
 
 (defn normalise-indexes
   "Move out of bounds indexes into the next free position
@@ -192,57 +198,73 @@
 
 (defn- handle-get-leagues
   [db]
-  (into {} (for [[l {:keys [matches schedule name]}] (:leagues @db)]
+  (into {} (for [[l {:keys [matches schedule name players img]}] (:leagues @db)]
              [l {:rankings (ranking/matches->league-ranks matches)
-                 :schedule schedule
+                 :schedule (sort-by :round schedule)
+                 :img img
+                 :players players
                  :name name}])))
 
+(defn handle-post-league-schedule
+  [db league {:keys [home away round] :as fixture}]
+  (let [id (hash (str round home away (rand-int 1000)))
+        fixture' (-> fixture
+                     (assoc :id id)
+                     (dissoc :name))]
+    (s/validate sch/LeagueScheduleMatch fixture')
+    (swap! db (fn [a] (update-in a [:leagues (keyword league) :schedule]
+                                 #(conj % fixture'))))
+    (ok id))
+  )
+
 (defn make-routes [is-dev? db event-ch]
-  (with-routes
-    (GET "/" [] (resource-response "index.html" {:root "public"}))
-    (route/resources "/")
-    (route/resources "/react" {:root "react"})
-    (swagger-ui :swagger-docs "/api/docs")
-    (swagger-docs "/api/docs")
-    (GET "/app" [] (resource-response "index.html" {:root "public"}))
-    ;;(GET "/init" [] (init! db) "inited")
-    (swaggered
-     "matches"
-     :description "Matches"
-     (context
-      "/matches" []
-      (GET* "/" []
-            :return {:message s/Str
-                     :matches [{s/Keyword s/Any}]}
-            :summary "all the matches"
-            (ok
-             {:message "Here's the results!"
-              :matches (take-last 20 (:singles-ladder @db))}))
-      (POST* "/" req
-             :body [result sch/Result]
-             (ok (save-match! result db)))))
-    (swaggered
-     "rankings"
-     :description "Rankings"
-     (context
-      "/rankings" []
-      (GET* "/" []
-            :return sch/RankingsResponse
-            (ok
-             (handle-rankings (:singles-ladder @db))))))
-    (swaggered
-     "leagues"
-     :description "Leagues"
-     (context
-      "/leagues" []
-      (GET* "/" []
-            :return sch/LeaguesResponse
-            (ok
-             {:leagues (handle-get-leagues db)}))
-      (POST* "/:league/result" [league] ;TODO: take id in post url?
-             :body [result sch/LeagueResult]
-             (ok (handle-league-result db (keyword league) result event-ch)))))
-    (route/not-found "Page not found")))
+  (api-root
+   (GET "/" [] (resource-response "index.html" {:root "public"}))
+   (route/resources "/")
+   (route/resources "/react" {:root "react"})
+   (swagger-ui :swagger-docs "/api/docs")
+   (swagger-docs "/api/docs")
+   (GET "/app" [] (resource-response "index.html" {:root "public"}))
+   ;;(GET "/init" [] (init! db) "inited")
+   (context*
+    "/matches" []
+    :tags ["matches"]
+    (GET* "/" []
+          :return {:message s/Str
+                   :matches [{s/Keyword s/Any}]}
+          :summary "all the matches"
+          (ok
+           {:message "Here's the results!"
+            :matches (take-last 20 (:singles-ladder @db))}))
+    (POST* "/" req
+           :body [result sch/Result]
+           (ok (save-match! result db))))
+   (context*
+    "/rankings" []
+    :tags ["rankings"]
+    (GET* "/" []
+          :return sch/RankingsResponse
+          (ok
+           (handle-rankings (:singles-ladder @db)))))
+   (context*
+    "/leagues" []
+    :tags ["leagues"]
+    (GET* "/" []
+          :return sch/LeaguesResponse
+          (ok
+           {:leagues (handle-get-leagues db)}))
+    (POST* "/:league/result" [league] ;TODO: take id in post url?
+           :body [result sch/LeagueResult]
+           (ok (handle-league-result db (keyword league) result event-ch)))
+    (GET* "/editable" req
+          (if-not (authenticated? req)
+            (do (prn "no auth")
+                (throw-unauthorized))
+            (ok)))
+    (POST* "/schedule/:league" [league]
+           :body [fixture s/Any]
+           (ok (handle-post-league-schedule db league fixture))))
+   (route/not-found "Page not found")))
 
 (defn wrap-schema-errors [handler]
   (fn [req]
@@ -259,10 +281,30 @@
       #_(println res)
       res)))
 
+(defn unauthorized-handler [req metadata]
+  (prn "in unauth" req)
+  (if-let [user (get-in req [:query-params "user"])]
+    (let [next-url (get-in req [:query-params :next] "/app")
+          updated-session (assoc (:session req) :identity (keyword user))]
+      (println updated-session)
+      (let [resp
+            (-> (redirect next-url)
+                (assoc :session updated-session))]
+        (prn resp)
+        resp))
+    {:status 401 :body {:error "Not authorized"}}))
+
+(def auth-backend
+  (session-backend {:unauthorized-handler unauthorized-handler}))
+
+
 (defn make-handler [is-dev? db event-ch]
   (-> (make-routes is-dev? db event-ch)
       ;; log-request-middleware
-
+      (wrap-authorization auth-backend)
+      (wrap-authentication auth-backend)
+      wrap-params
+      wrap-session
       (cond-> is-dev? (prone/wrap-exceptions
                        {:app-namespaces ["react-tutorial-om"]
                         :skip-prone? (fn [{:keys [headers]}]

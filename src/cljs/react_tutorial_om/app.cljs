@@ -3,6 +3,7 @@
   (:require-macros [cljs.core.async.macros :refer [go alt!]])
   (:require [goog.events :as events]
             [cljs.core.async :as async :refer [put! <! >! chan timeout]]
+            [cljs.core.match :refer-macros [match]]
             [om.core :as om]
             [om.dom :as dom]
             [om-tools.dom :as tdom]
@@ -16,6 +17,7 @@
             ;; [clairvoyant.core :as trace :include-macros true]
             [clojure.string :as str]
             ;; [omdev.core :as omdev]
+            [react-tutorial-om.schemas :as sch :refer [check Nat]]
             [react-tutorial-om.utils :refer [guid] :refer-macros [logm inspect breakpoint]])
   (:import [goog History]))
 
@@ -31,33 +33,6 @@
   history)
 
 
-;; Schemas
-
-(s/defschema Nat
-  (s/both s/Int
-          (s/pred #(not (neg? %)) "Zero or more")))
-
-
-(s/defschema Match
-  {:opposition s/Str
-   :for Nat
-   :against Nat
-   (s/optional-key :round) (s/maybe s/Int)
-   :date s/Inst})
-
-(s/defschema LeagueRanking
-  {(s/optional-key :rd) (s/maybe s/Int)
-   (s/optional-key :rank) Nat,
-   :matches [Match]
-   (s/optional-key :round) (s/maybe s/Int)
-   :team s/Str
-   :draw Nat
-   :loses Nat
-   :for Nat
-   :against Nat
-   :diff s/Int
-   :wins Nat
-   :points Nat})
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Util
@@ -142,8 +117,9 @@
           [:thead [:tr (map #(tdom/th %) ["winner" "" "" "loser"])]]
           [:tbody (om/build-all ladder-match-row (take 20 (reverse matches)))]])))
 
-(defn save-match!
-  [match app opts]
+(s/defn ^:always-validate save-match!
+  "Save Ladder match"
+  [match :- sch/Result app opts]
   (do (om/transact! app [:matches]
                     (fn [matches] (conj matches match)))
       (go (let [res (<! (http/post (:url opts) {:transit-params match}))]
@@ -163,6 +139,7 @@
 (defn save-league-match!
   "Post league result"
   [match app opts]
+  {:pre [(s/validate sch/LeagueResult match)]}
   (go (let [res (<! (http/post (:url opts) {:transit-params match}))]
         (when (:success res)
           (inspect "saved league:" res)
@@ -189,8 +166,23 @@
                               app {:url (str "/leagues/" name "/result")})
           (om/transact! app [(keyword name) :schedule]
                         (fn [s] (remove #(= (:id %) id) s))))
-      (logm "Warning: invalid score"))
+      (throw (js/Error. "Invalid score")))
     (inspect "onsubmit" result "winner" winner)))
+
+(s/defn ^:always-validate handle-league-schedule-submit
+  "Adds a new game to the schedule"
+  [app owner name {:keys [home away round] :as data} :- sch/LeagueScheduleMatch]
+  {:pre [(not= home away)]}
+  (inspect data)
+  (go (let [res (<! (http/post (str "/leagues" "/schedule/" name)
+                               {:transit-params (update data :round js/parseInt)}))]
+        (when (:success res)
+          (inspect "saved league schedule:" res)
+          (om/update-state! owner #(assoc % :home "" :away ""))
+          #_(fetch-leagues app {}))
+        res))
+  )
+
 
 (defn handle-submit
   [e app owner opts {:keys [winner winner-score loser loser-score]}]
@@ -207,8 +199,12 @@
         (om/set-state! owner key "")))
     (.preventDefault e)))
 
-(defn handle-change [e owner key]
-  (om/set-state! owner key (.. e -target -value)))
+(defn handle-change
+  "Get the value of the event and set the state to the key.
+  Applies f to the value if supplied"
+  [e owner key & [f]]
+  (let [v (.. e -target -value)]
+    (om/set-state! owner key (if f (f v) v))))
 
 (defcomponent ladder-form
   [app owner opts]
@@ -342,7 +338,7 @@
             (om/build ranking-list (:rankings app) {:opts opts}))))
 
 (defcomponent league-row [{:keys [team wins loses points matches for against diff
-                                  rank change]} ;;:- (schema/cursor LeagueRanking)
+                                  rank change league-name] :as data} ;;:- (schema/cursor LeagueRanking)
                           owner opts]
   (render
    [_]
@@ -360,7 +356,7 @@
              :+ "▲"
              :- "▼"
              "")]
-          [:td team]
+          [:td [:a {:href (str "#/leagues/" league-name "/team/" team)} team]]
           [:td (+ wins loses)]
           [:td wins]
           [:td loses]
@@ -371,46 +367,148 @@
           [:td (om/build last-10-games matches)]])))
 
 (defcomponent league-schedule-row [{:keys [round home id away name] :as app} owner opts]
-  (init-state [_] {:home-score 0 :away-score 0})
+  (init-state [_] {:home-score 0 :away-score 0 :error nil})
   (render-state
    [_ state]
    (let [leagues (om/observe owner (league-items))]
      (html
-      [:.row
        [:form
         {:class "league-form"
-         :on-submit #(do (handle-league-result-submit
-                          % leagues owner opts
-                          (merge state
-                                 {:round round :name name
-                                  :id id :home home :away away}))
-                         (.preventDefault %))}
-        [:.large-10.colums
-         [:.large-1.columns round]
-         [:.large-4.columns
-          [:label {:for "moo"} home]
-          [:select {:id "moo" :value (:home-score state)
-                    :on-change #(handle-change % owner :home-score)}
-           (for [n (range 4)]
-             [:option {:value (str n)} n])]]
-         [:.large-1.columns "vs"]
-         [:.large-4.columns
-          [:label {:for "foo"} away]
-          [:select {:id "foo" :value (:away-score state)
-                    :on-change #(handle-change % owner :away-score)}
-           (for [n (range 4)]
-             [:option {:value (str n)} n])]]
-         [:input {:class "button tiny" :type "submit" :value "Post"}]]]]))))
+         :on-submit #(do (.preventDefault %)
+                         (try (handle-league-result-submit
+                                % leagues owner opts
+                                (merge state
+                                       {:round round :name name
+                                        :id id :home home :away away}))
+                              (catch :default e
+                                (inspect e)
+                                (om/set-state! owner [:error] e)))
+                         )}
+        [:.row
+         [:.large-10.colums
+          [:.large-1.columns round]
+          [:.large-4.columns
+           [:.row.collapse.prefix-radius
+            [:.small-8.columns
+             [:span.prefix home]]
+            [:.small-4.columns
+             [:select {:id "moo" :value (:home-score state)
+                       :on-change #(handle-change % owner :home-score)}
+              (for [n (range 4)]
+                [:option {:value (str n)} n])]]]]
+          [:.large-1.columns "vs"]
+          [:.large-4.columns
+           [:.row.collapse.prefix-radius
+            [:.small-8.columns
+             [:span.prefix away]]
+            [:.small-4.columns
+             [:select {:id "foo" :value (:away-score state)
+                       :on-change #(handle-change % owner :away-score)}
+              (for [n (range 4)]
+                [:option {:value (str n)} n])]]]]
+          [:input {:class "button tiny" :type "submit" :value "Post"}]]]
+        (when-let [err (:error state)]
+          (let [msg (condp = (:type (.-data err))
+                      :schema.core/error "Invalid input"
+                      (.-message err))]
+            (go (<! (timeout 5000))
+                (om/set-state! owner :error nil))
+            [:small.error (str "Error: " msg)]))
+        ]))))
 
-(defcomponent league-schedule [{:keys [name schedule]} owner opts]
+(defn check-leagues-editable
+  "Calls editable endpoint, sets state
+
+  If success set to editable, if unauth set not-auth true"
+  [owner]
+  (go (let [{:keys [success status]} (<! (http/get "/leagues/editable"))]
+        (if success
+          (om/set-state! owner :editable true)
+          (when (= 401 status)
+            (om/update-state! owner (fn [s]
+                                      (assoc s
+                                        :editable false
+                                        :not-auth true))))))))
+
+(defcomponent league-schedule-edit
+  "Allows adding matches to schedule of authorised"
+  [data owner opts]
+  (init-state [_]
+    {:editable false
+     :not-auth false                                        ;; true if verified not authorised
+     :round 1
+     :home ""
+     :away ""
+     :error nil})
+
+  (render-state [this state]
+    (html [:div [:a {:on-click #(check-leagues-editable owner)}
+                 "Edit"]
+           (if (:editable state)
+             [:form {:on-submit #(do (.preventDefault %)
+                                     (try (handle-league-schedule-submit
+                                            data owner (:name data)
+                                            (select-keys state [:round :home :away]))
+                                          (catch :default e
+                                            (inspect "error")
+                                            (om/set-state! owner [:error] e))))}
+              [:.row
+               [:.large-12.colums
+                [:.small-2.columns
+                 [:.row.collapse.prefix-radius
+                  [:.small-5.columns
+                   [:span.prefix "R"]]
+                  [:.small-7.columns
+                   [:select {:id "round-select" :value (:round state)
+                             :on-change #(handle-change % owner :round js/parseInt)}
+                    (for [n (range 1 (inc (count (:players data))))]
+                      [:option {:value (str n)} n])]]]]
+                [:.large-3.columns
+                 [:.row.collapse.prefix-radius
+                  [:.small-2.columns
+                   [:span.prefix "H"]]
+                  [:.small-10.columns
+                   [:select {:id "add-home" :value (:home state)
+                             :on-change #(handle-change % owner :home)}
+                    (for [p (cons nil (:players data))]
+                      [:option {:value p} p])]]]]
+                [:.small-3.columns
+                 [:.row.collapse.prefix-radius
+                  [:.small-2.columns
+                   [:span.prefix "A"]]
+                  [:.small-10.columns
+                   [:select {:id "add-away" :value (:away state)
+                             :on-change #(handle-change % owner :away)}
+                    (for [p (cons nil (:players data))]
+                      [:option {:value p} p])]]
+                  ]
+                 ]
+                [:.small-2.columns
+                 [:input {:class "button tiny" :type "submit" :value "Add"}]]]]
+
+              (when-let [err (:error state)]
+                (let [msg (condp = (:type (.-data err))
+                            :schema.core/error "Invalid input"
+                            (.-message err))]
+                  (go (<! (timeout 5000))
+                      (om/set-state! owner :error nil))
+                  [:small.error (str "error: " msg)]))]
+             ;; else
+             (when (:not-auth state)
+               (go (<! (timeout 10000))
+                   (om/set-state! owner :not-auth false))
+               [:.alert-box.warning.radius "Not authorised to edit"]))])
+    ))
+
+(defcomponent league-schedule [{:keys [name schedule] :as data} owner opts]
   (render
    [_]
-   ;; (inspect schedule)
    (html
     [:div
      [:h4.subheader "Schedule"]
      (for [row schedule]
-       (om/build league-schedule-row (assoc row :name name) {:react-key (guid)}))])))
+       (om/build league-schedule-row (assoc row :name name) {:react-key (guid)}))
+     (om/build league-schedule-edit data)])))
 
 (defcomponent league-list [league owner opts]
   (init-state
@@ -422,16 +520,18 @@
    (html
     [:div
      [:h3 (:name league)]
-     (if (= "first-division" (:name league))
-       [:img {:src "/img/pm_tt.png" :style {:height "150px"}}]
-       [:img {:src "/img/pingpongblue.png" :style {:height "150px"}}])
+     (if-let [src (:img league)]
+       [:img {:src src :style {:height "150px"}}])
      [:table.rankingTable
       [:thead
        (for [header ["" "" "" "P" "W" "L" "F" "A" "Diff" "Pts" "Last 10 Games"]]
          [:th header])]
       [:tbody
-       (om/build-all league-row (:rankings league) {:key :team})]]
-     (om/build league-schedule {:name (:name league) :schedule (:schedule league)})])))
+       (om/build-all league-row (mapv #(assoc % :league-name (:name league))
+                                      (:rankings league)
+                                      )
+                     {:key :team})]]
+     (om/build league-schedule (select-keys league [:schedule :name :players]))])))
 
 (defcomponent status-box [conn? owner]
   (render [_]
@@ -473,48 +573,92 @@
    (async/close! (om/get-state owner :select-player-ch)))
   (render-state
    [this {:keys [select-player-ch]}]
-   (dom/div #js {:className "row"}
-            (dom/div #js {:className "large-2 columns"
-                          :dangerouslySetInnerHTML #js {:__html "&nbsp;"}})
-            (dom/div #js {:className "large-7 columns"}
-                     (om/build status-box (:conn? app))
-                     (om/build navigation-view {})
-                     (om/build rankings-box app
-                               {:opts {:poll-interval 2000
-                                       :url "/rankings"
-                                       :select-player-ch select-player-ch}})
-                     (om/build ladder-box app
-                               {:opts {:poll-interval 2000
-                                       :url "/matches"}}))
-            (dom/div #js {:className "large-3 columns"}
-                     (om/build
-                      player-summary
-                      {:data  (first
-                               (filter #(= (:team %)
-                                           (get-in app [:player-view :player]))
-                                       (:rankings app)))
-                       :display (get-in app [:player-view :display])})))))
+   (tdom/div {:class "row"}
+     (tdom/div {:class "large-2 columns"
+                :dangerouslySetInnerHTML {:__html "&nbsp;"}})
+     (tdom/div {:class "large-7 columns"}
+       (om/build status-box (:conn? app))
+       (om/build navigation-view {})
+       (om/build rankings-box app
+                 {:opts {:poll-interval 2000
+                         :url "/rankings"
+                         :select-player-ch select-player-ch}})
+       (om/build ladder-box app
+                 {:opts {:poll-interval 2000
+                         :url "/matches"}}))
+     (tdom/div {:class "large-3 columns"})
+     (om/build
+      player-summary
+      {:data  (first
+               (filter #(= (:team %)
+                           (get-in app [:player-view :player]))
+                       (:rankings app)))
+       :display (get-in app [:player-view :display])}))))
 
+(defn filter-schedule [team]
+  (filter #(or (= (:home %) team)
+               (= (:away %) team))))
+
+(defcomponent league-team-summary [{:keys [rank against points matches
+                                           for team change loses wins diff
+                                           schedule] :as data}
+                                   owner opts]
+  (render
+   [_]
+   (inspect (keys data))
+   (html [:div
+          [:h4 "Player Stats"]
+          [:ul.pricing-table
+           [:li.title team]
+           [:li.price rank]
+           [:li.bullet-item (str  wins " - " loses)]
+           [:li.bullet-item (str "Last match: " (let [game (last matches)]
+                                                  (str (:for game) " - " (:against game)
+                                                       " against " (:opposition game)
+                                                       " @ " (:date game))))]
+           [:li.bullet-item (str "Average sets per match: "
+                                 (.toFixed (/ (transduce (map :for) + matches)
+                                              (count matches))
+                                           2))]
+           [:li.bullet-item
+            [:div
+             [:p "Next games: "]
+             (for [game (sequence (comp (filter-schedule team) (take 2)) schedule)
+                   :let [opp (some #(if (not= team %) %)
+                                   ((juxt :home :away) game))]]
+               [:p (str  opp ". Rd: " (:round game))])]]]]
+         )))
 
 (defcomponent leagues-page-view [{:keys [leagues path] :as data} owner opts]
-  (render-state
-   [this state]
-   (inspect opts (+ 1 2 3))
+  (render
+   [_]
    (tdom/div {:className "row results-row"}
-     (tdom/div {:className "large-2 columns"
-                :dangerouslySetInnerHTML {:__html "&nbsp;"}})
+       (tdom/div {:className "large-2 columns"
+                  :dangerouslySetInnerHTML {:__html "&nbsp;"}})
      (tdom/div {:className "large-7 columns"}
-       #_(om/build status-box (:conn? data))
-       (om/build navigation-view {})
-       (tdom/h3 "Leagues")
+         #_(om/build status-box (:conn? data))
+         (om/build navigation-view {})
+         (tdom/h3 "Leagues")
 
-       (tdom/ul (for [[league _] leagues]
-                  (tdom/li {:key (name league)} (tdom/a {:href (str "#/leagues/" (name league))}
-                                                        (name league)))))
-       (if (seq path)
-         (tdom/div {:style (display (seq path))}
-           (om/build league-list (leagues (keyword (first path)))))))
-     (tdom/div {:className "large-3 columns" :dangerouslySetInnerHTML {:__html "&nbsp;"}})))
+         (tdom/ul (for [[league _] leagues]
+                    (tdom/li {:key (name league)}
+                             (tdom/a {:href (str "#/leagues/" (name league))}
+                                     (name league)))))
+         (if (seq path)
+           (tdom/div {:style (display (seq path))}
+               (om/build league-list (leagues (keyword (first path)))))))
+     (tdom/div {:className "large-3 columns"}
+         (match (om/value path)
+           [league [:team team]]
+           (if-let [team-row (->> (get-in leagues [(keyword league) :rankings])
+                                  (filter #(= team (:team %)))
+                                  first )]
+             (om/build league-team-summary
+                       (assoc team-row
+                              :schedule (get-in leagues [(keyword league) :schedule]))))
+           :else nil)
+       )))
+
   (init-state
    [_]
    {:mounted true})
@@ -569,12 +713,6 @@
            app-state
            {:target (.getElementById js/document "content")}))
 
-(defn about []
-  (om/root about-page-view
-           app-state
-           {:target (.getElementById js/document "content")
-            :shared {:route :about}}))
-
 (sec/defroute something-page "/leagues" []
   (logm "in leauges")
   (put! nav-ch [:leagues []]))
@@ -583,16 +721,15 @@
   (inspect id)
   (put! nav-ch [:leagues [id]]))
 
+(sec/defroute league-team "/leagues/:id/team/:team" [id team]
+  (put! nav-ch [:leagues [id [:team team]]]))
+
 (sec/defroute root-page "/" []
   (put! nav-ch [:ladder []]))
 
 (sec/defroute about-page "/about" []
   (logm "in about")
   (put! nav-ch [:about []]))
-
-#_(sec/defroute "*" []
-    (main))
-
 
 
 (defonce set-location

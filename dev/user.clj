@@ -10,6 +10,7 @@
             [clojure.string :as str]
             [clojure.test :as test]
             [clojure.tools.namespace.repl :refer [refresh refresh-all]]
+            expectations
             [figwheel-sidecar.auto-builder :as fig-auto]
             [figwheel-sidecar.core :as fig]
             [react-tutorial-om.core :as core]
@@ -21,8 +22,7 @@
 
 (defn browser-repl []
   (let [repl-env (weasel/repl-env :ip "0.0.0.0" :port 9001)]
-    (piggieback/cljs-repl :repl-env repl-env)
-    (piggieback/cljs-eval {} repl-env '(in-ns 'react-tutorial-om.core) {})))
+    (piggieback/cljs-repl repl-env)))
 
 (defonce fig-server (atom nil))
 (defonce fig-builder (atom nil))
@@ -32,7 +32,7 @@
            (.exists (io/file path))))
 
 (def base-fig-config
-  {:builds [{:source-paths ["dev/cljs" "src/cljs"]
+  {:builds [{:source-paths ["dev/cljs" "src/cljs" "src/cljc"]
              :compiler {:output-to "resources/public/js/app.js"
                         :output-dir "resources/public/js/out"
                         :source-map "resources/public/js/out.js.map"
@@ -52,3 +52,15 @@
 
 (defn stop-auto-build! []
   (auto/stop-autobuild! @fig-builder))
+
+(defn- mark-tests-as-unrun []
+  (let [all (->> (all-ns)
+                 (mapcat (comp vals ns-interns)))
+        previously-ran-tests (filter (comp :expectations/run meta) all)]
+    (doseq [test previously-ran-tests]
+      (alter-meta! test dissoc :expectations/run :status))))
+
+(defn reset-run-tests []
+  (reset)
+  (mark-tests-as-unrun)
+  (expectations/run-all-tests))
