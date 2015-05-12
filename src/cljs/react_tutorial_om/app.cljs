@@ -578,7 +578,7 @@
                 :dangerouslySetInnerHTML {:__html "&nbsp;"}})
      (tdom/div {:class "large-7 columns"}
        (om/build status-box (:conn? app))
-       (om/build navigation-view {})
+
        (om/build rankings-box app
                  {:opts {:poll-interval 2000
                          :url "/rankings"
@@ -586,14 +586,14 @@
        (om/build ladder-box app
                  {:opts {:poll-interval 2000
                          :url "/matches"}}))
-     (tdom/div {:class "large-3 columns"})
-     (om/build
-      player-summary
-      {:data  (first
-               (filter #(= (:team %)
-                           (get-in app [:player-view :player]))
-                       (:rankings app)))
-       :display (get-in app [:player-view :display])}))))
+     (tdom/div {:class "large-3 columns"}
+       (om/build
+        player-summary
+        {:data  (first
+                 (filter #(= (:team %)
+                             (get-in app [:player-view :player]))
+                         (:rankings app)))
+         :display (get-in app [:player-view :display])})))))
 
 (defn filter-schedule [team]
   (filter #(or (= (:home %) team)
@@ -637,7 +637,6 @@
                   :dangerouslySetInnerHTML {:__html "&nbsp;"}})
      (tdom/div {:className "large-7 columns"}
          #_(om/build status-box (:conn? data))
-         (om/build navigation-view {})
          (tdom/h3 "Leagues")
 
          (tdom/ul (for [[league _] leagues]
@@ -681,7 +680,6 @@
             (dom/div #js {:className "large-2 columns"
                           :dangerouslySetInnerHTML #js {:__html "&nbsp;"}})
             (dom/div #js {:className "large-7 columns"}
-                     (om/build navigation-view {})
                      (tdom/div nil (tdom/a {:href "https://github.com/minimal/player-ladder"}
                                            "Fork me on Github")))
             (dom/div #js {:className "large-3 columns" :dangerouslySetInnerHTML #js {:__html "&nbsp;"}}))))
@@ -689,12 +687,20 @@
 (defcomponent top-level [{:keys [view path] :as app} owner]
   (render
    [this]
-   (case view
-     :leagues (om/build leagues-page-view app)
-     :ladder (om/build ladder-app app)
-     :about (om/build about-page-view app)
-     (do (inspect "unknown path " view)
-         (om/build ladder-app app))))
+   (tdom/div
+       (tdom/div {:class "row results-row"} ;; top bar
+         (tdom/div {:class "large-2 columns"
+                    :dangerouslySetInnerHTML {:__html "&nbsp;"}})
+         (tdom/div {:class "large-7 columns"}
+           (om/build navigation-view {}))
+         (tdom/div {:class "large-3 columns"
+                    :dangerouslySetInnerHTML {:__html "&nbsp;"}}))
+     (case view
+       :leagues (om/build leagues-page-view app)
+       :ladder (om/build ladder-app app)
+       :about (om/build about-page-view app)
+       (do (inspect "unknown path " view)
+           (om/build ladder-app app)))))
 
   (will-mount
    [_]
