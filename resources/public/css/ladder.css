@@ -31,6 +31,18 @@ ul.last-10-games {
     background-color: #c0c0c0;
 }
 
+tr.relegation:nth-of-type(even), tr.relegation:nth-of-type(odd) {
+    background: #EEAAAA
+}
+
+tr.promotion:nth-of-type(even), tr.promotion:nth-of-type(odd) {
+    background: #AAEEAA
+}
+
+tr.playoff:nth-of-type(even) , tr.playoff:nth-of-type(odd){
+    background: #DDEEDD
+}
+
 .last-10-games span {
     height: 4px;
     width: 11px;

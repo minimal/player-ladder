@@ -87,24 +87,29 @@
    :home NEmptyStr
    :away NEmptyStr})
 
+(defschema LeaguesBase
+  {:schedule [LeagueScheduleMatch]
+   :players [s/Str]
+   (s/optional-key :sets-per-match) s/Int
+   (s/optional-key :img) (s/maybe s/Str)
+   (s/optional-key :bands) (s/maybe {:promotion s/Int
+                                     :playoff s/Int
+                                     :relegation s/Int})
+   :name s/Str})
+
 (defschema LeaguesResponse
-  {:leagues {s/Keyword {:rankings [LeagueRanking]
-                        :schedule [LeagueScheduleMatch]
-                        :players [s/Str]
-                        (s/optional-key :img) (s/maybe s/Str)
-                        :name s/Str}}})
+  {:leagues {s/Keyword (assoc LeaguesBase
+                              :rankings [LeagueRanking])}})
 
 (defschema LeagueStorage
-  {s/Keyword {:matches [Result]
-              :schedule [LeagueScheduleMatch]
-              (s/optional-key :img) (s/maybe s/Str)
-              :players [s/Str]
-              :name s/Str}})
+  {s/Keyword (assoc LeaguesBase
+                    :matches [Result])})
+
 #?(:clj
    (defschema AllResults
-    "Results as stored in edn file"
-    {:singles-ladder           [Result]
-     (s/optional-key :leagues) LeagueStorage}))
+     "Results as stored in edn file"
+     {:singles-ladder           [Result]
+      (s/optional-key :leagues) LeagueStorage}))
 
 (defn check []
  #?(:clj :clojure

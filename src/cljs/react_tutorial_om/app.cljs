@@ -147,7 +147,8 @@
         res)))
 
 (defn handle-league-result-submit
-  [e app owner opts {:keys [home-score away-score home away name id round]
+  [e app owner opts {:keys [home-score away-score home away name id round
+                            sets-per-match]
                      :as result}]
   (let [[home-score away-score] (map js/parseInt [home-score away-score])
         [winner winner-score] (if (> home-score away-score)
@@ -157,9 +158,7 @@
                               [away away-score]
                               [home home-score])]
     (if (and (> winner-score loser-score)
-             (if (= "second-division" name)
-               (= 2 winner-score)
-               (= 3 winner-score)))
+             (= sets-per-match winner-score))
       (do (save-league-match! {:winner winner :winner-score winner-score
                                :loser loser :loser-score loser-score
                                :id id :round round}
@@ -337,16 +336,26 @@
             (tdom/h3 "Rankings")
             (om/build ranking-list (:rankings app) {:opts opts}))))
 
+(defn position-class [bands rank]
+  (if bands
+    (cond
+      (<= (:relegation bands) rank)
+      "relegation"
+
+      (>= (:playoff bands) rank (inc (:promotion bands)))
+      "playoff"
+
+      (>= (:promotion bands) rank)
+      "promotion"
+
+      :else nil)))
+
 (defcomponent league-row [{:keys [team wins loses points matches for against diff
-                                  rank change league-name] :as data} ;;:- (schema/cursor LeagueRanking)
+                                  rank change league-name bands] :as data} ;;:- (schema/cursor LeagueRanking)
                           owner opts]
   (render
    [_]
-   (html [:tr {:style (cond
-                        (< 10 rank) {:background-color "#EEAAAA"}
-                        (= 10 rank) {:background-color "#FFCC00"}
-                        (> 3 rank) {:background-color "#AAEEAA"}
-                        :else nil)}
+   (html [:tr {:class (position-class bands rank)}
           [:td rank]
           [:td {:style {:color (case change
                                  :+ "#2c7e00"
@@ -370,51 +379,53 @@
   (init-state [_] {:home-score 0 :away-score 0 :error nil})
   (render-state
    [_ state]
-   (let [leagues (om/observe owner (league-items))]
+   (let [leagues (om/observe owner (league-items))
+         league (get leagues (keyword name))]
      (html
-       [:form
-        {:class "league-form"
-         :on-submit #(do (.preventDefault %)
-                         (try (handle-league-result-submit
-                                % leagues owner opts
-                                (merge state
-                                       {:round round :name name
-                                        :id id :home home :away away}))
-                              (catch :default e
-                                (inspect e)
-                                (om/set-state! owner [:error] e)))
-                         )}
-        [:.row
-         [:.large-10.colums
-          [:.large-1.columns round]
-          [:.large-4.columns
-           [:.row.collapse.prefix-radius
-            [:.small-8.columns
-             [:span.prefix home]]
-            [:.small-4.columns
-             [:select {:id "moo" :value (:home-score state)
-                       :on-change #(handle-change % owner :home-score)}
-              (for [n (range 4)]
-                [:option {:value (str n)} n])]]]]
-          [:.large-1.columns "vs"]
-          [:.large-4.columns
-           [:.row.collapse.prefix-radius
-            [:.small-8.columns
-             [:span.prefix away]]
-            [:.small-4.columns
-             [:select {:id "foo" :value (:away-score state)
-                       :on-change #(handle-change % owner :away-score)}
-              (for [n (range 4)]
-                [:option {:value (str n)} n])]]]]
-          [:input {:class "button tiny" :type "submit" :value "Post"}]]]
-        (when-let [err (:error state)]
-          (let [msg (condp = (:type (.-data err))
-                      :schema.core/error "Invalid input"
-                      (.-message err))]
-            (go (<! (timeout 5000))
-                (om/set-state! owner :error nil))
-            [:small.error (str "Error: " msg)]))
-        ]))))
+      [:form
+       {:class "league-form"
+        :on-submit #(do (.preventDefault %)
+                        (try (handle-league-result-submit
+                              % leagues owner opts
+                              (merge state
+                                     {:round round :name name
+                                      :sets-per-match (:sets-per-match league)
+                                      :id id :home home :away away}))
+                             (catch :default e
+                               (inspect e)
+                               (om/set-state! owner [:error] e)))
+                        )}
+       [:.row
+        [:.large-10.colums
+         [:.large-1.columns round]
+         [:.large-4.columns
+          [:.row.collapse.prefix-radius
+           [:.small-8.columns
+            [:span.prefix home]]
+           [:.small-4.columns
+            [:select {:id "moo" :value (:home-score state)
+                      :on-change #(handle-change % owner :home-score)}
+             (for [n (range (inc (:sets-per-match league)))]
+               [:option {:value (str n)} n])]]]]
+         [:.large-1.columns "vs"]
+         [:.large-4.columns
+          [:.row.collapse.prefix-radius
+           [:.small-8.columns
+            [:span.prefix away]]
+           [:.small-4.columns
+            [:select {:id "foo" :value (:away-score state)
+                      :on-change #(handle-change % owner :away-score)}
+             (for [n (range (inc (:sets-per-match league)))]
+               [:option {:value (str n)} n])]]]]
+         [:input {:class "button tiny" :type "submit" :value "Post"}]]]
+       (when-let [err (:error state)]
+         (let [msg (condp = (:type (.-data err))
+                     :schema.core/error "Invalid input"
+                     (.-message err))]
+           (go (<! (timeout 5000))
+               (om/set-state! owner :error nil))
+           [:small.error (str "Error: " msg)]))
+       ]))))
 
 (defn check-leagues-editable
   "Calls editable endpoint, sets state
@@ -527,7 +538,9 @@
        (for [header ["" "" "" "P" "W" "L" "F" "A" "Diff" "Pts" "Last 10 Games"]]
          [:th header])]
       [:tbody
-       (om/build-all league-row (mapv #(assoc % :league-name (:name league))
+       (om/build-all league-row (mapv #(assoc %
+                                              :league-name (:name league)
+                                              :bands (:bands league))
                                       (:rankings league)
                                       )
                      {:key :team})]]
@@ -538,11 +551,12 @@
           (html [:.alert-box.warning.radius {:style (display (not conn?))}
                  "Connection problem!"])))
 
-(defcomponent navigation-view [_ _]
+(defcomponent navigation-view [app _]
   (render
    [_]
    (let [style {:style {:margin "10px;"}}]
      (tdom/div style
+       (om/build status-box (:conn? app))
        (tdom/a (assoc style :href "#/")
                "Ladder")
        (tdom/a (assoc style :href "#/leagues")
@@ -577,7 +591,6 @@
      (tdom/div {:class "large-2 columns"
                 :dangerouslySetInnerHTML {:__html "&nbsp;"}})
      (tdom/div {:class "large-7 columns"}
-       (om/build status-box (:conn? app))
 
        (om/build rankings-box app
                  {:opts {:poll-interval 2000
@@ -690,7 +703,7 @@
          (tdom/div {:class "large-2 columns"
                     :dangerouslySetInnerHTML {:__html "&nbsp;"}})
          (tdom/div {:class "large-7 columns"}
-           (om/build navigation-view {}))
+           (om/build navigation-view (select-keys app [:conn?])))
          (tdom/div {:class "large-3 columns"
                     :dangerouslySetInnerHTML {:__html "&nbsp;"}}))
      (case view
