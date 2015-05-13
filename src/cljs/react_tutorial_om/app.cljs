@@ -367,7 +367,11 @@
              :+ "▲"
              :- "▼"
              "")]
-          [:td [:a {:href (str "#/leagues/" league-name "/team/" team)} team]]
+          [:td [:a {:href (str "#/leagues/" league-name "/team/" team)
+                    :on-click #(some-> js/document
+                                       (.getElementById "league-summary")
+                                       .scrollIntoView )}
+                team]]
           [:td (+ wins loses)]
           [:td wins]
           [:td loses]
@@ -618,10 +622,10 @@
                                            for team change loses wins diff
                                            schedule] :as data}
                                    owner opts]
+  (did-mount [_] (.scrollIntoView (om/get-node owner)))
   (render
    [_]
-   (inspect (keys data))
-   (html [:div
+   (html [:div#league-summary
           [:h4 "Player Stats"]
           [:ul.pricing-table
            [:li.title team]
