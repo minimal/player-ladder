@@ -1,6 +1,6 @@
 (ns ^:figwheel-load
   react-tutorial-om.app
-  (:require-macros [cljs.core.async.macros :refer [go alt!]])
+  (:require-macros [cljs.core.async.macros :refer [go alt! go-loop]])
   (:require [goog.events :as events]
             [cljs.core.async :as async :refer [put! <! >! chan timeout]]
             [cljs.core.match :refer-macros [match]]
@@ -33,6 +33,8 @@
   history)
 
 
+(defonce conn-ch (chan (async/dropping-buffer 1))) ;;TODO: no global
+(defonce nav-ch (chan))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Util
@@ -45,9 +47,10 @@
   "The comments need to be a vector, not a list. Not sure why."
   [app opts]
   (go (let [{{matches :matches} :body} (<! (http/get (:url opts) {:accept "application/transit+json"}))]
-        (when matches
+        (if matches
           (om/transact!
-           app #(assoc % :matches matches))))))
+           app #(assoc % :matches matches))
+          (>! conn-ch :error)))))
 
 (defn- fetch-rankings
   "The comments need to be a vector, not a list. Not sure why."
@@ -59,9 +62,8 @@
            app #(-> %
                     (assoc :rankings rankings)
                     (assoc :players players)
-                    (assoc :conn? true)))
-          (om/transact!
-           app #(assoc % :conn? false))))))
+                    ))
+          (>! conn-ch :error)))))
 
 (defn fetch-leagues
   "The comments need to be a vector, not a list. Not sure why."
@@ -70,8 +72,9 @@
   (go (let [{:keys [success status body] :as resp} (<! (http/get
                                                         "/leagues"
                                                         {:accept "application/transit+json"}))]
-        (when success
-          (om/update! app (:leagues body))))))
+        (if success
+          (om/update! app (:leagues body))
+          (>! conn-ch :error)))))
 
 
 (defn- value-from-node
@@ -96,7 +99,6 @@
 (defn league-items []
   (om/ref-cursor (:leagues (om/root-cursor app-state))))
 
-(defonce nav-ch (chan))
 
 (defn display [show]
   (if show
@@ -713,11 +715,25 @@
        (do (inspect "unknown path " view)
            (om/build ladder-app app)))))
 
+  (init-state
+   [_]
+   {:mounted true})
+  (will-unmount
+   [_]
+   (om/set-state! owner :mounted false))
   (will-mount
    [_]
    (logm "starting top-level")
+   (go-loop []
+     (when-let [msg (and (om/get-state owner :mounted) (<! conn-ch))]
+       (when (= :error msg)
+         (om/transact! app #(assoc % :conn? false))
+         (<! (timeout 5000))
+         (om/transact! app #(assoc % :conn? true)))
+       (recur)))
    (go (loop []
-         (when-let [[view' path'] (<! nav-ch)]
+         (when-let [[view' path'] (and (om/get-state owner :mounted)
+                                       (<! nav-ch))]
            (inspect view')
            (inspect path')
            (om/transact! app #(assoc %
