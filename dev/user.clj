@@ -39,7 +39,7 @@
                         :source-map-timestamp true
                         :main "react-tutorial-om.main"
                         :asset-path "js/out"
-                        :preamble ["react/react.min.js"]}}]
+                        :cache-analysis true}}]
    :figwheel-server nil})
 
 (defn start-figwheel []

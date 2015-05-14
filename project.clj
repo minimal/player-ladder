@@ -12,7 +12,7 @@
                  [environ "1.0.0"]
                  [metosin/compojure-api "0.20.1"]
                  [org.omcljs/om "0.8.8"]
-                 [org.clojure/clojure "1.7.0-beta2"]
+                 [org.clojure/clojure "1.7.0-beta3"]
                  [org.clojure/clojurescript "0.0-3269" :classifier "aot" :exclusions
                   [org.clojure/tools.reader org.clojure/data.json]]
                  [org.clojure/tools.reader "0.9.2" :classifier "aot"]
@@ -91,7 +91,6 @@
                              :compiler {:output-to "resources/public/js/app.js"
                                         :output-dir "resources/public/js/out"
                                         :source-map "resources/public/js/out.js.map"
-                                        :preamble ["react/react.min.js"]
                                         :externs ["react/externs/react.js"]
                                         :optimizations :none
                                         :main "react-tutorial-om.main"
