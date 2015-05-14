@@ -32,8 +32,6 @@
   (doto history (.setEnabled true))
   history)
 
-
-(defonce conn-ch (chan (async/dropping-buffer 1))) ;;TODO: no global
 (defonce nav-ch (chan))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -45,7 +43,7 @@
 
 (defn- fetch-matches
   "The comments need to be a vector, not a list. Not sure why."
-  [app opts]
+  [app opts conn-ch]
   (go (let [{{matches :matches} :body} (<! (http/get (:url opts) {:accept "application/transit+json"}))]
         (if matches
           (om/transact!
@@ -54,7 +52,7 @@
 
 (defn- fetch-rankings
   "The comments need to be a vector, not a list. Not sure why."
-  [app opts]
+  [app opts conn-ch]
   (go (let [{{:keys [rankings players]}
              :body status :status} (<! (http/get (:url opts) {:accept "application/transit+json"}))]
         (if rankings
@@ -67,7 +65,7 @@
 
 (defn fetch-leagues
   "The comments need to be a vector, not a list. Not sure why."
-  [app opts]
+  [app opts conn-ch]
   ;; (logm "gonna fetch leagues")
   (go (let [{:keys [success status body] :as resp} (<! (http/get
                                                         "/leagues"
@@ -140,12 +138,12 @@
 
 (defn save-league-match!
   "Post league result"
-  [match app opts]
+  [match app opts conn-ch]
   {:pre [(s/validate sch/LeagueResult match)]}
   (go (let [res (<! (http/post (:url opts) {:transit-params match}))]
         (when (:success res)
           (inspect "saved league:" res)
-          (fetch-leagues app opts))
+          (fetch-leagues app opts conn-ch))
         res)))
 
 (defn handle-league-result-submit
@@ -164,7 +162,8 @@
       (do (save-league-match! {:winner winner :winner-score winner-score
                                :loser loser :loser-score loser-score
                                :id id :round round}
-                              app {:url (str "/leagues/" name "/result")})
+                              app {:url (str "/leagues/" name "/result")}
+                              (:conn-ch (om/get-shared owner)))
           (om/transact! app [(keyword name) :schedule]
                         (fn [s] (remove #(= (:id %) id) s))))
       (throw (js/Error. "Invalid score")))
@@ -238,7 +237,7 @@
   (init-state [_] {:mounted true})
   (will-mount [_]
               (go (while (om/get-state owner :mounted)
-                    (fetch-matches app opts)
+                    (fetch-matches app opts (:conn-ch (om/get-shared owner)))
                     (<! (timeout (:poll-interval opts))))))
   (will-unmount [_]
                 (om/set-state! owner :mounted false))
@@ -328,7 +327,7 @@
   (will-mount [_]
               (prn "will mount")
               (go (while (om/get-state owner :mounted)
-                    (fetch-rankings app opts)
+                    (fetch-rankings app opts (:conn-ch (om/get-shared owner)))
                     (<! (timeout (:poll-interval opts))))))
   (will-unmount [_]
                 (logm "unmounting!!!!!")
@@ -684,7 +683,7 @@
    (inspect opts)
    (go (while (om/get-state owner :mounted)
          ;; (logm :polling)
-         (fetch-leagues leagues opts)
+         (fetch-leagues leagues opts (:conn-ch (om/get-shared owner)))
          (<! (timeout (or  (:poll-interval opts) 5000))))))
   (will-unmount
    [_]
@@ -729,7 +728,8 @@
    [_]
    (logm "starting top-level")
    (go-loop []
-     (when-let [msg (and (om/get-state owner :mounted) (<! conn-ch))]
+     (when-let [msg (and (om/get-state owner :mounted)
+                         (<! (:conn-ch (om/get-shared owner))))]
        (when (= :error msg)
          (om/transact! app #(assoc % :conn? false))
          (<! (timeout 5000))
@@ -748,7 +748,8 @@
 (defn run-top-level []
   (om/root top-level
            app-state
-           {:target (.getElementById js/document "content")}))
+           {:target (.getElementById js/document "content")
+            :shared {:conn-ch (chan (async/dropping-buffer 1))}}))
 
 (sec/defroute something-page "/leagues" []
   (logm "in leauges")
