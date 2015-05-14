@@ -5,8 +5,7 @@
             [cljs.core.async :as async :refer [put! <! >! chan timeout]]
             [cljs.core.match :refer-macros [match]]
             [om.core :as om]
-            [om.dom :as dom]
-            [om-tools.dom :as tdom]
+            [om-tools.dom :as dom]
             [om-tools.core :refer-macros [defcomponent defcomponentk]]
             [om-tools.schema :as schema]
             [schema.core :as s :refer-macros [defschema]]
@@ -107,14 +106,14 @@
   [{:keys [winner winner-score loser loser-score date]} owner opts]
   (render
    [_]
-   (tdom/tr {:class "comment"}
-            (map tdom/td [winner winner-score loser-score loser]))))
+   (dom/tr {:class "comment"}
+           (map dom/td [winner winner-score loser-score loser]))))
 
 (defcomponent ladder-result-list [{:keys [matches]}]
   (render
    [_]
    (html [:table.commentList
-          [:thead [:tr (map #(tdom/th %) ["winner" "" "" "loser"])]]
+          [:thead [:tr (map #(dom/th %) ["winner" "" "" "loser"])]]
           [:tbody (om/build-all ladder-match-row (take 20 (reverse matches)))]])))
 
 (s/defn ^:always-validate save-match!
@@ -225,24 +224,24 @@
     :loser "" :loser-score ""})
   (render-state
    [this state]
-   (tdom/form
+   (dom/form
     {:class "commentForm" :onSubmit #(handle-submit % app owner opts state)}
-    (tdom/input {:type "text" :placeholder "Winner" :ref "winner"
+    (dom/input {:type "text" :placeholder "Winner" :ref "winner"
                  :value (:winner state) :list "players"
                  :onChange #(handle-change % owner :winner)})
-    (tdom/input {:type "number"  :placeholder "Score" :ref "winner-score"
+    (dom/input {:type "number"  :placeholder "Score" :ref "winner-score"
                  :value (:winner-score state)
                  :onChange #(handle-change % owner :winner-score)})
-    (tdom/input {:type "text" :placeholder "Loser" :ref "loser"
+    (dom/input {:type "text" :placeholder "Loser" :ref "loser"
                  :value (:loser state) :list "players"
                  :onChange #(handle-change % owner :loser)})
-    (tdom/input {:type "number" :placeholder "Score" :ref "loser-score"
+    (dom/input {:type "number" :placeholder "Score" :ref "loser-score"
                  :value (:loser-score state)
                  :onChange #(handle-change % owner :loser-score)})
-    (tdom/input {:class "button" :type "submit" :value "Post"})
-    (apply dom/datalist #js {:id "players"}
-           (map #(dom/option #js {:value %})
-                (:players app))))))
+    (dom/input {:class "button" :type "submit" :value "Post"})
+    (dom/datalist {:id "players"}
+                   (map #(dom/option {:value %})
+                        (:players app))))))
 
 (defcomponent ladder-box [app owner opts]
   (init-state [_] {:mounted true})
@@ -254,8 +253,8 @@
                 (om/set-state! owner :mounted false))
   (render
    [_]
-   (tdom/div {:class "commentBox"}
-     (tdom/h3 "Results (most recent first)")
+   (dom/div {:class "commentBox"}
+     (dom/h3 "Results (most recent first)")
      (om/build ladder-form app {:opts opts})
      (om/build ladder-result-list app))))
 
@@ -304,12 +303,13 @@
 (defcomponent ranking
   [{:keys [team rank ranking rd wins loses suggest] :as fields} owner opts]
   (render-state [this {:keys [select-player-ch]}]
-                (tdom/tr
-                 (map tdom/td
+                                        ;TODO: should chan ;really be in local state?
+                (dom/tr
+                 (map dom/td
                       [rank
-                       (tdom/span {:onClick (fn [e]
-                                              (.stopPropagation e)
-                                              (put! select-player-ch team))
+                       (dom/span {:onClick (fn [e]
+                                             (.stopPropagation e)
+                                             (put! select-player-ch team))
                                    :style {:cursor "pointer"}}
                                   team)
                        ranking (.toFixed (/ wins loses) 2) suggest
@@ -318,17 +318,17 @@
 (defcomponent ranking-list [rankings owner opts]
   (render
    [_]
-   (tdom/table {:class "rankingTable"}
-               (tdom/thead
-                (tdom/tr
-                 (map tdom/th
-                      ["" "team" "ranking" "w/l"
-                       "suggested opponent" "last 10 games"])))
-               (tdom/tbody
-                (om/build-all
-                 ranking
-                 rankings
-                 {:init-state {:select-player-ch (:select-player-ch opts)}})))))
+   (dom/table {:class "rankingTable"}
+              (dom/thead
+               (dom/tr
+                (map dom/th
+                     ["" "team" "ranking" "w/l"
+                      "suggested opponent" "last 10 games"])))
+              (dom/tbody
+               (om/build-all
+                ranking
+                rankings
+                {:init-state {:select-player-ch (:select-player-ch opts)}})))))
 
 
 (defcomponent rankings-box [app owner opts]
@@ -343,8 +343,8 @@
                 (logm "unmounting!!!!!")
                 (om/set-state! owner :mounted false))
   (render [_]
-          (tdom/div {:class "rankingsBox"}
-            (tdom/h3 "Rankings")
+          (dom/div {:class "rankingsBox"}
+            (dom/h3 "Rankings")
             (om/build ranking-list (:rankings app) {:opts opts}))))
 
 (defn position-class [bands rank]
@@ -462,10 +462,10 @@
         (if success
           (om/set-state! owner :editable true)
           (when (= 401 status)
-            (om/update-state! owner (fn [s]
-                                      (assoc s
-                                        :editable false
-                                        :not-auth true))))))))
+            (om/update-state! owner
+                              #(assoc %
+                                      :editable false
+                                      :not-auth true)))))))
 
 (defcomponent league-schedule-edit
   "Allows adding matches to schedule of authorised"
@@ -581,13 +581,13 @@
   (render
    [_]
    (let [style {:style {:margin "10px;"}}]
-     (tdom/div style
+     (dom/div style
        (om/build status-box (:conn? app))
-       (tdom/a (assoc style :href "#/")
+       (dom/a (assoc style :href "#/")
                "Ladder")
-       (tdom/a (assoc style :href "#/leagues")
+       (dom/a (assoc style :href "#/leagues")
                "Leagues")
-       (tdom/a (assoc style :href "#/about")
+       (dom/a (assoc style :href "#/about")
                "About")))))
 
 
@@ -613,10 +613,10 @@
    (async/close! (om/get-state owner :select-player-ch)))
   (render-state
    [this {:keys [select-player-ch]}]
-   (tdom/div {:class "row"}
-     (tdom/div {:class "large-2 columns"
+   (dom/div {:class "row"}
+     (dom/div {:class "large-2 columns"
                 :dangerouslySetInnerHTML {:__html "&nbsp;"}})
-     (tdom/div {:class "large-7 columns"}
+     (dom/div {:class "large-7 columns"}
 
        (om/build rankings-box app
                  {:opts {:poll-interval 2000
@@ -625,7 +625,7 @@
        (om/build ladder-box app
                  {:opts {:poll-interval 2000
                          :url "/matches"}}))
-     (tdom/div {:class "large-3 columns"}
+     (dom/div {:class "large-3 columns"}
        (om/build
         player-summary
         {:data  (first
@@ -671,19 +671,19 @@
 (defcomponent leagues-page-view [{:keys [leagues path] :as data} owner opts]
   (render
    [_]
-   (tdom/div {:class "row results-row"}
-     (tdom/div {:class "large-2 columns"
-                :dangerouslySetInnerHTML {:__html "&nbsp;"}})
-     (tdom/div {:class "large-7 columns"}
-       (tdom/h3 "Leagues")
-       (tdom/ul (for [[league _] leagues]
-                  (tdom/li {:key (name league)}
-                           (tdom/a {:href (str "#/leagues/" (name league))}
-                                   (name league)))))
+   (dom/div {:class "row results-row"}
+     (dom/div {:class "large-2 columns"
+               :dangerouslySetInnerHTML {:__html "&nbsp;"}})
+     (dom/div {:class "large-7 columns"}
+       (dom/h3 "Leagues")
+       (dom/ul (for [[league _] leagues]
+                 (dom/li {:key (name league)}
+                         (dom/a {:href (str "#/leagues/" (name league))}
+                                (name league)))))
        (if (seq path)
-         (tdom/div {:style (display (seq path))}
+         (dom/div {:style (display (seq path))}
            (om/build league-list (leagues (keyword (first path)))))))
-     (tdom/div {:class "large-3 columns"}
+     (dom/div {:class "large-3 columns"}
        (match (om/value path)
          [league [:team team]]
          (if-let [team-row (->> (get-in leagues [(keyword league) :rankings])
@@ -713,24 +713,24 @@
 (defcomponent about-page-view [_ owner]
   (render
    [_]
-   (tdom/div {:class "row results-row"}
-     (tdom/div {:class "large-2 columns"
-                :dangerouslySetInnerHTML #js {:__html "&nbsp;"}})
-     (tdom/div {:class "large-7 columns"}
-       (tdom/div (tdom/a {:href "https://github.com/minimal/player-ladder"}
-                         "Fork me on Github")))
-     (tdom/div {:class "large-3 columns" :dangerouslySetInnerHTML {:__html "&nbsp;"}}))))
+   (dom/div {:class "row results-row"}
+     (dom/div {:class "large-2 columns"
+               :dangerouslySetInnerHTML #js {:__html "&nbsp;"}})
+     (dom/div {:class "large-7 columns"}
+       (dom/div (dom/a {:href "https://github.com/minimal/player-ladder"}
+                       "Fork me on Github")))
+     (dom/div {:class "large-3 columns" :dangerouslySetInnerHTML {:__html "&nbsp;"}}))))
 
 (defcomponent top-level [{:keys [view path] :as app} owner]
   (render
    [this]
-   (tdom/div
-       (tdom/div {:class "row results-row"} ;; top bar
-         (tdom/div {:class "large-2 columns"
+   (dom/div
+       (dom/div {:class "row results-row"} ;; top bar
+         (dom/div {:class "large-2 columns"
                     :dangerouslySetInnerHTML {:__html "&nbsp;"}})
-         (tdom/div {:class "large-7 columns"}
+         (dom/div {:class "large-7 columns"}
            (om/build navigation-view (select-keys app [:conn?])))
-         (tdom/div {:class "large-3 columns"
+         (dom/div {:class "large-3 columns"
                     :dangerouslySetInnerHTML {:__html "&nbsp;"}}))
      (case view
        :leagues (om/build leagues-page-view app)
