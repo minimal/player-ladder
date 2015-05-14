@@ -146,17 +146,28 @@
           (fetch-leagues app opts conn-ch))
         res)))
 
-(defn handle-league-result-submit
-  [e app owner opts {:keys [home-score away-score home away name id round
-                            sets-per-match]
-                     :as result}]
-  (let [[home-score away-score] (map js/parseInt [home-score away-score])
-        [winner winner-score] (if (> home-score away-score)
+
+(defn valid-league-result?
+  [{:keys [sets-per-match home-score away-score]}]
+  (and (= sets-per-match (max home-score away-score))
+       (not= home-score away-score)))
+
+(defn calc-winner-loser [home home-score away away-score]
+  (let [[winner winner-score] (if (> home-score away-score)
                                 [home home-score]
                                 [away away-score])
         [loser loser-score] (if (= winner home)
                               [away away-score]
                               [home home-score])]
+    [winner winner-score loser loser-score]))
+
+(defn handle-league-result-submit
+  [e app owner opts {:keys [home-score away-score home away name id round
+                            sets-per-match]
+                     :as result}]
+  (let [[home-score away-score] (map js/parseInt [home-score away-score])
+        [winner winner-score loser loser-score] (calc-winner-loser home home-score
+                                                                   away away-score)]
     (if (and (> winner-score loser-score)
              (= sets-per-match winner-score))
       (do (save-league-match! {:winner winner :winner-score winner-score
@@ -186,6 +197,7 @@
 
 (defn handle-submit
   [e app owner opts {:keys [winner winner-score loser loser-score]}]
+  (.preventDefault e)
   (let [winner (clojure.string/trim winner)
         winner-score (clojure.string/trim winner-score)
         loser (clojure.string/trim loser)
@@ -196,8 +208,7 @@
                     :loser loser :loser-score loser-score-int}
                    app opts)
       (doseq [key [:winner :winner-score :loser :loser-score]]
-        (om/set-state! owner key "")))
-    (.preventDefault e)))
+        (om/set-state! owner key "")))))
 
 (defn handle-change
   "Get the value of the event and set the state to the key.
@@ -261,7 +272,6 @@
                                 " against " (:opposition game)
                                 " @ " (:date game))]]))])))
 
-
 (defcomponent player-summary
   [{{:keys [team ranking rd wins loses suggest matches] :as fields} :data
     show :display} owner opts]
@@ -298,10 +308,10 @@
                  (map tdom/td
                       [rank
                        (tdom/span {:onClick (fn [e]
-                                              (put! select-player-ch team)
-                                              (.stopPropagation e))
-                                   :style #js {:cursor "pointer"}}
-                         team)
+                                              (.stopPropagation e)
+                                              (put! select-player-ch team))
+                                   :style {:cursor "pointer"}}
+                                  team)
                        ranking (.toFixed (/ wins loses) 2) suggest
                        (om/build last-10-games (:matches fields))]))))
 
@@ -380,8 +390,16 @@
           [:td {:style {:color "darkgreen"}} points]
           [:td (om/build last-10-games matches)]])))
 
+(defn- set-valid-league-result!
+  "If scores are valid set valid? flag in local state"
+  [{:keys [sets-per-match]}  owner]
+  (om/set-state! owner [:valid?]
+                 (valid-league-result?
+                  (assoc (om/get-state owner)
+                         :sets-per-match sets-per-match))))
+
 (defcomponent league-schedule-row [{:keys [round home id away name] :as app} owner opts]
-  (init-state [_] {:home-score 0 :away-score 0 :error nil})
+  (init-state [_] {:home-score 0 :away-score 0 :error nil :valid? false})
   (render-state
    [_ state]
    (let [leagues (om/observe owner (league-items))
@@ -409,7 +427,8 @@
             [:span.prefix home]]
            [:.small-4.columns
             [:select {:id "moo" :value (:home-score state)
-                      :on-change #(handle-change % owner :home-score)}
+                      :on-change #(do (handle-change % owner :home-score js/parseInt)
+                                      (set-valid-league-result! league owner))}
              (for [n (range (inc (:sets-per-match league)))]
                [:option {:value (str n)} n])]]]]
          [:.large-1.columns "vs"]
@@ -419,10 +438,12 @@
             [:span.prefix away]]
            [:.small-4.columns
             [:select {:id "foo" :value (:away-score state)
-                      :on-change #(handle-change % owner :away-score)}
+                      :on-change #(do (handle-change % owner :away-score js/parseInt)
+                                      (set-valid-league-result! league owner))}
              (for [n (range (inc (:sets-per-match league)))]
                [:option {:value (str n)} n])]]]]
-         [:input {:class "button tiny" :type "submit" :value "Post"}]]]
+         [:input {:class "button tiny" :type "submit" :value "Post"
+                  :disabled (not (:valid? state))}]]]
        (when-let [err (:error state)]
          (let [msg (condp = (:type (.-data err))
                      :schema.core/error "Invalid input"
