@@ -1,7 +1,7 @@
 language: clojure
 script:
   - lein expectations
-  - "if [[ $TRAVIS_BRANCH == 'master' ]]; then lein with-profile -dev,+uberjar cljsbuild once; fi" 
+  - "if [[ $TRAVIS_BRANCH == 'master' ]]; then lein with-profile -dev,+uberjar cljsbuild once; ls -lh resources/public/js/app.js; fi" 
 #  - lein cljfmt check | ":"
 notifications:
   webhooks:
