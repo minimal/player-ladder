@@ -1,33 +1,33 @@
 (ns react-tutorial-om.core
-  (:require [clj-time.coerce :refer [from-date from-string to-timestamp]]
-            [clj-time.core :as time]
-            [clojure.core.async :refer [<! >! chan go]]
-            [clojure.edn :as edn]
-            [clojure.java.io :as io]
-            [clojure.pprint :refer [pprint]]
-            [clojure.string :as str]
-            [compojure.api.routes :refer [api-root]]
-            [compojure.api.sweet
-             :refer
-             [GET* POST* context* swagger-docs swagger-ui]]
-            [compojure.core :refer [GET]]
-            [compojure.route :as route]
-            [com.stuartsierra.component :as component]
-            [buddy.auth :refer [authenticated? throw-unauthorized]]
+  (:require [buddy.auth :refer [authenticated? throw-unauthorized]]
             [buddy.auth.backends.session :refer [session-backend]]
             [buddy.auth.middleware :refer [wrap-authentication wrap-authorization]]
-            [prone.debug :refer [debug]]
+            [clj-time
+             [coerce :refer [from-date from-string to-timestamp]]
+             [core :as time]]
+            [clojure.core.async :refer [>! chan go]]
+            [clojure.string :as str]
+            [com.stuartsierra.component :as component]
+            [compojure
+             [core :refer [GET]]
+             [route :as route]]
+            [compojure.api
+             [routes :refer [api-root]]
+             [sweet :refer [context* GET* POST* swagger-docs swagger-ui]]]
             [prone.middleware :as prone]
-            [react-tutorial-om.ranking :as ranking]
-            [react-tutorial-om.schemas :as sch]
+            [react-tutorial-om
+             [ranking :as ranking]
+             [schemas :as sch]]
             ring.adapter.jetty
-            [ring.middleware.format :refer [wrap-restful-format]]
-            [ring.middleware.session :refer [wrap-session]]
-            [ring.middleware.params :refer [wrap-params]]
-            [ring.util.response :refer [redirect]]
-            [ring.util.http-response :as http-resp :refer [ok resource-response]]
+            [ring.middleware
+             [format :refer [wrap-restful-format]]
+             [params :refer [wrap-params]]
+             [session :refer [wrap-session]]]
+            [ring.util
+             [http-response :as http-resp :refer [ok resource-response]]
+             [response :refer [redirect]]]
             [schema.core :as s]
-            [slingshot.slingshot :refer [throw+ try+]]))
+            [slingshot.slingshot :refer [try+]]))
 
 (def archived-teams #{"jons" "cliff" "sina" "jamie" "michael" "michal"})
 
@@ -36,19 +36,6 @@
                    (#(or (from-string %) (from-date %)))
                    (time/after? (time/minus (or now (time/now))
                                             (time/weeks (or weeks 20)))))))
-
-(defn load-edn-file [file]
-  (-> (slurp file)
-      (edn/read-string)
-      ((partial s/validate sch/AllResults))))
-
-(defn spit-edn-file [file data]
-  (spit file (with-out-str (pprint data))))
-
-(defn init!
-  [db db-file]
-  (reset! db (load-edn-file db-file)))
-
 
 (s/defn ^:always-validate update-ladder-match
   "Coerce the data into the format we want and add date"
@@ -321,22 +308,14 @@
       ;; ring.middleware.http-response/catch-response
       ))
 
-(defrecord WebServer [ring is-dev? event-handler db-file]
+(defrecord WebServer [ring is-dev? event-handler database]
   component/Lifecycle
   (start [component]
-    (let [db (atom {})
-          file-agent (agent nil :error-handler println)
-          _ (init! db db-file)
-          app (make-handler is-dev? db (:pub-ch event-handler))]
-      (add-watch db :writer (fn [_ _ _ new]
-                              (send-off file-agent (fn [_] (spit-edn-file db-file new)))))
+    (let [app (make-handler is-dev? (:db database) (:pub-ch event-handler))]
       #_(when is-dev?
           (inspect/start))
       (assoc component
-             :server
-             (ring.adapter.jetty/run-jetty app ring)
-             :file-agent file-agent
-             :db db)))
+             :server (ring.adapter.jetty/run-jetty app ring))))
   (stop [component]
     #_(when is-dev?
         (inspect/stop))
