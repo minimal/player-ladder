@@ -8,19 +8,19 @@
                  [cljs-http "0.1.30"]
                  [com.stuartsierra/component "0.2.3"]
                  [compojure "1.3.4"]
-                 [buddy/buddy-auth "0.5.2"]
+                 [buddy/buddy-auth "0.5.3"]
                  [environ "1.0.0"]
-                 [metosin/compojure-api "0.20.1"]
+                 [metosin/compojure-api "0.20.4"]
                  [org.omcljs/om "0.8.8"]
-                 [org.clojure/clojure "1.7.0-beta3"]
-                 [org.clojure/clojurescript "0.0-3269" :classifier "aot" :exclusions
+                 [org.clojure/clojure "1.7.0-RC1"]
+                 [org.clojure/clojurescript "0.0-3291" :classifier "aot" :exclusions
                   [org.clojure/tools.reader org.clojure/data.json]]
                  [org.clojure/tools.reader "0.9.2" :classifier "aot"]
                  [org.clojure/data.json "0.2.6" :classifier "aot"]
                  [org.clojure/core.async "0.1.346.0-17112a-alpha"]
                  [prismatic/om-tools "0.3.11"]
-                 [prismatic/schema "0.4.2"]
-                 [prone "0.8.1"]
+                 [prismatic/schema "0.4.3"]
+                 [prone "0.8.2"]
                  [ring "1.3.2"]
                  [metosin/ring-middleware-format "0.6.0"]
                  [ring/ring-core "1.3.2"]
@@ -56,9 +56,9 @@
   :profiles {:dev {:dependencies [[javax.servlet/servlet-api "2.5"]
                                   [expectations "2.0.16"]
                                   [weasel "0.6.0" :exclusions [org.clojure/clojurescript]]
-                                  [figwheel-sidecar "0.3.1"
+                                  [figwheel-sidecar "0.3.3"
                                    :exclusions [org.clojure/clojurescript]]
-                                  [figwheel "0.3.1"
+                                  [figwheel "0.3.3"
                                    :exclusions [org.clojure/clojurescript]]
                                   [com.cemerick/piggieback "0.2.1"
                                    :exclusions [org.clojure/clojurescript]]
