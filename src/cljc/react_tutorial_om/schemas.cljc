@@ -83,6 +83,7 @@
 
 (defschema LeagueScheduleMatch
   {(s/optional-key :id) s/Int
+   (s/optional-key :inactive?) s/Bool
    :round Nat
    :home NEmptyStr
    :away NEmptyStr})

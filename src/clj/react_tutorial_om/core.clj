@@ -175,9 +175,10 @@
   "Update the state map with the result of the league match. Remove
   match from schedule and also update the ladder with the result"
   [result :- sch/LeagueResult league doc]
+  ;TODO: validate not inactive
   (-> doc
       (update-in [:leagues league :schedule]
-                 (fn [sch] (remove #(= (:id %) (:id result)) sch)))
+                 (fn [sch] (vec (remove #(= (:id %) (:id result)) sch))))
       (update-in [:leagues league :matches]
                  conj (assoc result :date (to-timestamp (time/now))))
       ((partial update-ladder-results (-> result
