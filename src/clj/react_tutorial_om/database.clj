@@ -80,17 +80,17 @@
         ;; TODO: remove-watch
         (assoc component :db nil))
   Database
-  (get-leagues [{:keys [db]}]
+  (get-leagues [_]
                (:leagues @db))
-  (save-league-result! [{:keys [db]} result league]
+  (save-league-result! [_ result league]
                        (swap! db (partial update-league-result result league)))
   (save-league-schedule-match!
-   [{:keys [db]} match league]
+   [_ match league]
    (swap! db (fn [a] (update-in a [:leagues league :schedule]
                                 #(conj % match)))))
-  (get-ladder-matches [{:keys [db]}]
+  (get-ladder-matches [_]
                       (:singles-ladder @db))
-  (save-ladder-match! [{:keys [db]} result]
+  (save-ladder-match! [_ result]
                       (save-ladder-match!* db result)))
 
 (s/defschema AtomDatabaseSchema
