@@ -9,7 +9,7 @@
 (defn make-system [{:keys [is-dev? db-file slack-url port]}]
   (component/system-map
    :event-handler (events/->EventHandler slack-url)
-   :database (database/->AtomDatabase db-file)
+   :database (database/map->new-database {:db-file db-file})
    :webserver (component/using
                (core/new-webserver {:ring {:port (or port 3000) :join? false}
                                     :slack-url slack-url

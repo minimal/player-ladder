@@ -3,10 +3,9 @@
             [buddy.auth.backends.session :refer [session-backend]]
             [buddy.auth.middleware :refer [wrap-authentication wrap-authorization]]
             [clj-time
-             [coerce :refer [from-date from-string to-timestamp]]
+             [coerce :refer [from-date from-string]]
              [core :as time]]
             [clojure.core.async :refer [>! chan go]]
-            [clojure.string :as str]
             [com.stuartsierra.component :as component]
             [compojure
              [core :refer [GET]]
@@ -16,6 +15,7 @@
              [sweet :refer [context* GET* POST* swagger-docs swagger-ui]]]
             [prone.middleware :as prone]
             [react-tutorial-om
+             [database :as db]
              [ranking :as ranking]
              [schemas :as sch]]
             ring.adapter.jetty
@@ -36,25 +36,6 @@
                    (#(or (from-string %) (from-date %)))
                    (time/after? (time/minus (or now (time/now))
                                             (time/weeks (or weeks 20)))))))
-
-(s/defn ^:always-validate update-ladder-match
-  "Coerce the data into the format we want and add date"
-  [match :- sch/Result]
-  (-> match
-      ;; TODO: coerce data earlier
-      (update :winner clojure.string/lower-case)
-      (update :loser clojure.string/lower-case)
-      (assoc :date (to-timestamp (time/now)))))
-
-(s/defn ^:always-validate update-ladder-results :- sch/AllResults
-  [match :- sch/Result
-   doc :- sch/AllResults]
-  (update-in doc [:singles-ladder] conj (update-ladder-match match)))
-
-(s/defn ^:always-validate  save-match! ;; TODO: write to a db
-  [match :- sch/Result, db]
-  (swap! db (partial update-ladder-results match))
-  {:message "Saved Match!"})
 
 (defn translate-keys [{:keys [winner winner-score loser loser-score date competition]}]
   {:home winner
@@ -154,30 +135,17 @@
                    filtered? (filter (fn [{matches :matches}]
                                        (recent? (:date (last matches)))))
                    filtered? ((fn [col] (if (> (count col) 5)
-                                         (drop-last 2 col)
-                                         col)))
+                                          (drop-last 2 col)
+                                          col)))
                    true (map-indexed (fn [i m] (assoc m :rank (inc i))))))}))
 
-(s/defn ^:always-validate update-league-result
-  "Update the state map with the result of the league match. Remove
-  match from schedule and also update the ladder with the result"
-  [result :- sch/LeagueResult league doc]
-  ;TODO: validate not inactive
-  (-> doc
-      (update-in [:leagues league :schedule]
-                 (fn [sch] (vec (remove #(= (:id %) (:id result)) sch))))
-      (update-in [:leagues league :matches]
-                 conj (assoc result :date (to-timestamp (time/now))))
-      ((partial update-ladder-results (-> result
-                                          (dissoc :id :round)
-                                          (assoc :competition league))))))
 
 (defn handle-league-result
   "Given an db atom, a league name and a result update the schedule and
   matches for the league and write out to file. Return the resulting
   state. Also post to slack if possible."
   [db league {:keys [winner loser winner-score loser-score] :as result} event-ch]
-  (let [db-snapshot (swap! db (partial update-league-result result league))]
+  (let [db-snapshot (db/save-league-result! db result league)]
     (if event-ch
       (go (>! event-ch [:league-match (assoc result
                                              :league league
@@ -187,7 +155,7 @@
 (defn- handle-get-leagues
   [db]
   (into {} (for [[l {:keys [matches schedule name players img
-                            sets-per-match bands]}] (:leagues @db)]
+                            sets-per-match bands]}] (db/get-leagues db)]
              [l {:rankings (ranking/matches->league-ranks matches)
                  :schedule (sort-by :round schedule)
                  :img img
@@ -203,8 +171,7 @@
                      (assoc :id id)
                      (dissoc :name))]
     (s/validate sch/LeagueScheduleMatch fixture')
-    (swap! db (fn [a] (update-in a [:leagues (keyword league) :schedule]
-                                 #(conj % fixture'))))
+    (db/save-league-schedule-match! db fixture' (keyword league))
     (ok id))
   )
 
@@ -226,17 +193,18 @@
           :summary "all the matches"
           (ok
            {:message "Here's the results!"
-            :matches (take-last 20 (:singles-ladder @db))}))
+            :matches (take-last 20 (db/get-ladder-matches db))}))
     (POST* "/" req
            :body [result sch/Result]
-           (ok (save-match! result db))))
+           (ok (do (db/save-ladder-match! db result)
+                   {:message "Saved Match!"}))))
    (context*
     "/rankings" []
     :tags ["rankings"]
     (GET* "/" []
           :return sch/RankingsResponse
           (ok
-           (handle-rankings (:singles-ladder @db)))))
+           (handle-rankings (db/get-ladder-matches db)))))
    (context*
     "/leagues" []
     :tags ["leagues"]
@@ -311,7 +279,7 @@
 (defrecord WebServer [ring is-dev? event-handler database]
   component/Lifecycle
   (start [component]
-    (let [app (make-handler is-dev? (:db database) (:pub-ch event-handler))]
+    (let [app (make-handler is-dev? database (:pub-ch event-handler))]
       #_(when is-dev?
           (inspect/start))
       (assoc component

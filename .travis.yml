@@ -1,4 +1,6 @@
 language: clojure
+jdk:
+  - oraclejdk8
 script:
   - lein expectations
   - "if [[ $TRAVIS_BRANCH == 'master' ]]; then lein with-profile -dev,+uberjar cljsbuild once; fi" 
