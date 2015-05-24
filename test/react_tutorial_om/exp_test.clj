@@ -1,18 +1,20 @@
 (ns react-tutorial-om.exp-test
   (:require [clj-http.client :as client]
-            [clj-time.coerce :refer [from-date from-string to-timestamp]]
-            [clj-time.core :as time]
-            [clojure.data.json :as json]
+            [clj-time
+             [coerce :refer [from-date to-timestamp]]
+             [core :as time]]
             [clojure.template :refer [do-template]]
             [cognitect.transit :as transit]
             [com.stuartsierra.component :as component]
             [expectations :refer :all]
-            [react-tutorial-om.core :refer :all]
-            [react-tutorial-om.ranking :as ranking]
-            [react-tutorial-om.schemas :as sch]
+            [react-tutorial-om
+             [core :refer :all]
+             [database :as database]
+             [events :refer [->EventHandler]]
+             [ranking :as ranking]
+             [schemas :as sch]]
             [ring.mock.request :refer :all]
-            [schema.core :as s]
-            [react-tutorial-om.events :refer [->EventHandler]]))
+            [schema.core :as s]))
 
 ;; recent
 (do-template [expected input]
@@ -85,6 +87,9 @@
                  :players []
                  :name "a"}}})
 
+(defn new-db [data]
+  (component/start (database/map->new-database {:db (atom data)})))
+
 (def match-result {:date (java.util.Date.)
                    :winner "a",
                    :loser "b",
@@ -118,20 +123,20 @@
 (expect (more-of resp
                  200 (:status resp)
                  nil? (s/check sch/RankingsResponse (slurp-transit-body resp)))
-        (get-api (atom fresh-state) "/rankings"))
+        (get-api (new-db fresh-state) "/rankings"))
 
 
 ;; players
 (expect #{"a" "b"} (-> fresh-state
                        (update :singles-ladder conj match-result)
-                       atom
+                       new-db
                        (get-api "/rankings")
                        slurp-transit-body
                        :players))
 
 (expect nil? (-> fresh-state
                  (update :singles-ladder conj match-result)
-                 atom
+                 new-db
                  (get-api "/rankings")
                  slurp-transit-body
                  (->>
@@ -146,16 +151,16 @@
          :date (to-timestamp (time/date-time 1))
          :round 1}
 
-        (let [app-state (atom fresh-state)]
+        (let [db (new-db fresh-state)]
           (freeze-time (time/date-time 1)
-                       (post-api app-state "/leagues/a/result"
+                       (post-api db "/leagues/a/result"
                                  {:winner "foo"
                                   :loser "moo"
                                   :winner-score 3
                                   :loser-score 0
                                   :id 1
                                   :round 1}))
-          (get-in @app-state [:leagues :a :matches 0])))
+          (get-in @(:db db) [:leagues :a :matches 0])))
 
 ;; posting to league adds to ladder with competition
 (expect {:winner "foo"
@@ -165,47 +170,51 @@
          :competition :a
          :date (to-timestamp (time/date-time 1))}
 
-        (let [app-state (atom fresh-state)]
+        (let [db (new-db fresh-state)]
           (freeze-time (time/date-time 1)
-                       (post-api app-state "/leagues/a/result"
+                       (post-api db "/leagues/a/result"
                                  {:winner "foo"
                                   :loser "moo"
                                   :winner-score 3
                                   :loser-score 0
                                   :id 1
                                   :round 1}))
-          (get-in @app-state [:singles-ladder 0])))
+          (get-in @(:db db) [:singles-ladder 0])))
 
 ;; posting to a known league gives a higher ranking for winning
 (expect (more-> "foo" :team
                 1264.0 :ranking)
 
-        (let [app-state (-> fresh-state
-                            (assoc :leagues {:first-division {:matches []
-                                                              :schedule []
-                                                              :players []
-                                                              :name "first-division"}})
-                            atom)]
-          (post-api app-state "/leagues/first-division/result"
+        (let [db (-> fresh-state
+                     (assoc :leagues {:first-division {:matches []
+                                                       :schedule []
+                                                       :players []
+                                                       :name "first-division"}})
+                     new-db)]
+          (post-api db "/leagues/first-division/result"
                     {:winner "foo"
                      :loser "moo"
                      :winner-score 3
                      :loser-score 0
                      :id 1
                      :round 1})
-          (-> @app-state
+          (-> @(:db db)
               :singles-ladder
               (handle-rankings {:filtered? true})
               :rankings
               first)))
 
 ;; posts to slack on league result
-(expect ['("localhost" {:form-params {:text "foo wins against moo in league a: 3 - 0"}
-                        :content-type :json})]
-        (let [app-state (atom fresh-state)
+(expect (more-of [[host {:keys [form-params] :as params}] :as all]
+                 "localhost" host
+                 map? params
+                 string? (:text form-params)
+                 #"foo" (:text form-params)
+                 #"moo" (:text form-params))
+        (let [db (new-db fresh-state)
               event-handler (component/start (->EventHandler "localhost"))]
           (side-effects [client/post]
-                        (post-api app-state "/leagues/a/result"
+                        (post-api db "/leagues/a/result"
                                   {:winner "foo"
                                    :loser "moo"
                                    :winner-score 3

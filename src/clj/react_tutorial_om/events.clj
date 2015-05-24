@@ -7,26 +7,47 @@
             [slingshot.slingshot :refer [try+]]))
 
 
-(defn post-league-result-to-slack [{:keys [winner loser winner-score loser-score league]}
-                                   slack-url]
+(defn format-league-bound-players [[best1 best2] [worst1 worst2] league size]
+  (format (str/join "\n" ["\t\tLeague %s:"
+                          "\t\tTop players:"
+                          "\t\t\t\t1.- %s"
+                          "\t\t\t\t2.- %s"
+                          "\t\tBottom players:"
+                          "\t\t\t\t%s.- %s"
+                          "\t\t\t\t%s.- %s"])
+          (name league) best1 best2 (dec size) worst1 size worst2))
+
+(defn post-to-slack
+  "Post a params map to slack. Returns a channel or nil if noop"
+  [slack-url params]
   (when-not (str/blank? slack-url)
     (async/thread
       (try+
        (client/post slack-url
-                    {:form-params {:text (format "%s wins against %s in league %s: %s - %s"
-                                                 winner loser (name league) winner-score loser-score)}
+                    {:form-params params
                      :content-type :json})
        (catch [:status 403] {:keys [request-time headers body]}
          (println "Slack 403 " request-time headers))
        (catch Object _
          (println (:throwable &throw-context) "unexpected error"))))))
 
+(defn post-league-result-to-slack [{:keys [winner loser winner-score loser-score league
+                                           rankings]}
+                                   slack-url]
+  (let [match-text (format "%s wins against %s in league %s: %s - %s"
+                           winner loser (name league) winner-score loser-score)
+        bound-text (format-league-bound-players (map :team rankings)
+                                                (map :team (take-last 2 rankings))
+                                                league (count rankings))
+        params {:text (str/join "\n\n" [match-text bound-text])}]
+    (post-to-slack slack-url params)))
+
 (defn setup-slack-loop [channel prefix slack-url]
   (go-loop []
     (when-let [[topic msg] (<! channel)]
-      ;(println prefix ": " topic ": " msg)
       (case topic
         :league-match (post-league-result-to-slack msg slack-url)
+        ;; :bound-players (post-league-bound-players-to-slack msg slack-url)
         (println "Unknown topic " topic))
       (recur))))
 

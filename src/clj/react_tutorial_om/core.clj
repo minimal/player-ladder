@@ -1,33 +1,33 @@
 (ns react-tutorial-om.core
-  (:require [clj-time.coerce :refer [from-date from-string to-timestamp]]
-            [clj-time.core :as time]
-            [clojure.core.async :refer [<! >! chan go]]
-            [clojure.edn :as edn]
-            [clojure.java.io :as io]
-            [clojure.pprint :refer [pprint]]
-            [clojure.string :as str]
-            [compojure.api.routes :refer [api-root]]
-            [compojure.api.sweet
-             :refer
-             [GET* POST* context* swagger-docs swagger-ui]]
-            [compojure.core :refer [GET]]
-            [compojure.route :as route]
-            [com.stuartsierra.component :as component]
-            [buddy.auth :refer [authenticated? throw-unauthorized]]
+  (:require [buddy.auth :refer [authenticated? throw-unauthorized]]
             [buddy.auth.backends.session :refer [session-backend]]
             [buddy.auth.middleware :refer [wrap-authentication wrap-authorization]]
-            [prone.debug :refer [debug]]
+            [clj-time
+             [coerce :refer [from-date from-string]]
+             [core :as time]]
+            [clojure.core.async :refer [>! chan go]]
+            [com.stuartsierra.component :as component]
+            [compojure
+             [core :refer [GET]]
+             [route :as route]]
+            [compojure.api
+             [routes :refer [api-root]]
+             [sweet :refer [context* GET* POST* swagger-docs swagger-ui]]]
             [prone.middleware :as prone]
-            [react-tutorial-om.ranking :as ranking]
-            [react-tutorial-om.schemas :as sch]
+            [react-tutorial-om
+             [database :as db]
+             [ranking :as ranking]
+             [schemas :as sch]]
             ring.adapter.jetty
-            [ring.middleware.format :refer [wrap-restful-format]]
-            [ring.middleware.session :refer [wrap-session]]
-            [ring.middleware.params :refer [wrap-params]]
-            [ring.util.response :refer [redirect]]
-            [ring.util.http-response :as http-resp :refer [ok resource-response]]
+            [ring.middleware
+             [format :refer [wrap-restful-format]]
+             [params :refer [wrap-params]]
+             [session :refer [wrap-session]]]
+            [ring.util
+             [http-response :as http-resp :refer [ok resource-response]]
+             [response :refer [redirect]]]
             [schema.core :as s]
-            [slingshot.slingshot :refer [throw+ try+]]))
+            [slingshot.slingshot :refer [try+]]))
 
 (def archived-teams #{"jons" "cliff" "sina" "jamie" "michael" "michal"})
 
@@ -36,38 +36,6 @@
                    (#(or (from-string %) (from-date %)))
                    (time/after? (time/minus (or now (time/now))
                                             (time/weeks (or weeks 20)))))))
-
-(defn load-edn-file [file]
-  (-> (slurp file)
-      (edn/read-string)
-      ((partial s/validate sch/AllResults))))
-
-(defn spit-edn-file [file data]
-  (spit file (with-out-str (pprint data))))
-
-(defn init!
-  [db db-file]
-  (reset! db (load-edn-file db-file)))
-
-
-(s/defn ^:always-validate update-ladder-match
-  "Coerce the data into the format we want and add date"
-  [match :- sch/Result]
-  (-> match
-      ;; TODO: coerce data earlier
-      (update :winner clojure.string/lower-case)
-      (update :loser clojure.string/lower-case)
-      (assoc :date (to-timestamp (time/now)))))
-
-(s/defn ^:always-validate update-ladder-results :- sch/AllResults
-  [match :- sch/Result
-   doc :- sch/AllResults]
-  (update-in doc [:singles-ladder] conj (update-ladder-match match)))
-
-(s/defn ^:always-validate  save-match! ;; TODO: write to a db
-  [match :- sch/Result, db]
-  (swap! db (partial update-ladder-results match))
-  {:message "Saved Match!"})
 
 (defn translate-keys [{:keys [winner winner-score loser loser-score date competition]}]
   {:home winner
@@ -167,39 +135,29 @@
                    filtered? (filter (fn [{matches :matches}]
                                        (recent? (:date (last matches)))))
                    filtered? ((fn [col] (if (> (count col) 5)
-                                         (drop-last 2 col)
-                                         col)))
+                                          (drop-last 2 col)
+                                          col)))
                    true (map-indexed (fn [i m] (assoc m :rank (inc i))))))}))
 
-(s/defn ^:always-validate update-league-result
-  "Update the state map with the result of the league match. Remove
-  match from schedule and also update the ladder with the result"
-  [result :- sch/LeagueResult league doc]
-  (-> doc
-      (update-in [:leagues league :schedule]
-                 (fn [sch] (remove #(= (:id %) (:id result)) sch)))
-      (update-in [:leagues league :matches]
-                 conj (assoc result :date (to-timestamp (time/now))))
-      ((partial update-ladder-results (-> result
-                                          (dissoc :id :round)
-                                          (assoc :competition league))))))
 
 (defn handle-league-result
   "Given an db atom, a league name and a result update the schedule and
   matches for the league and write out to file. Return the resulting
   state. Also post to slack if possible."
   [db league {:keys [winner loser winner-score loser-score] :as result} event-ch]
-  (let [db-snapshot (swap! db (partial update-league-result result league))]
+  (let [db-snapshot (db/save-league-result! db result league)
+        matches (get-in db-snapshot [:leagues league :matches])]
     (if event-ch
-      (go (>! event-ch [:league-match (assoc result
-                                             :league league
-                                             :db-snapshot db-snapshot)]))))
+      (go (>! event-ch [:league-match
+                        (assoc result
+                               :league league
+                               :rankings (ranking/matches->league-ranks matches))]))))
   {:message "ok"})
 
 (defn- handle-get-leagues
   [db]
   (into {} (for [[l {:keys [matches schedule name players img
-                            sets-per-match bands]}] (:leagues @db)]
+                            sets-per-match bands]}] (db/get-leagues db)]
              [l {:rankings (ranking/matches->league-ranks matches)
                  :schedule (sort-by :round schedule)
                  :img img
@@ -215,8 +173,7 @@
                      (assoc :id id)
                      (dissoc :name))]
     (s/validate sch/LeagueScheduleMatch fixture')
-    (swap! db (fn [a] (update-in a [:leagues (keyword league) :schedule]
-                                 #(conj % fixture'))))
+    (db/save-league-schedule-match! db fixture' (keyword league))
     (ok id))
   )
 
@@ -238,17 +195,18 @@
           :summary "all the matches"
           (ok
            {:message "Here's the results!"
-            :matches (take-last 20 (:singles-ladder @db))}))
+            :matches (take-last 20 (db/get-ladder-matches db))}))
     (POST* "/" req
            :body [result sch/Result]
-           (ok (save-match! result db))))
+           (ok (do (db/save-ladder-match! db result)
+                   {:message "Saved Match!"}))))
    (context*
     "/rankings" []
     :tags ["rankings"]
     (GET* "/" []
           :return sch/RankingsResponse
           (ok
-           (handle-rankings (:singles-ladder @db)))))
+           (handle-rankings (db/get-ladder-matches db)))))
    (context*
     "/leagues" []
     :tags ["leagues"]
@@ -320,22 +278,14 @@
       ;; ring.middleware.http-response/catch-response
       ))
 
-(defrecord WebServer [ring is-dev? event-handler db-file]
+(defrecord WebServer [ring is-dev? event-handler database]
   component/Lifecycle
   (start [component]
-    (let [db (atom {})
-          file-agent (agent nil :error-handler println)
-          _ (init! db db-file)
-          app (make-handler is-dev? db (:pub-ch event-handler))]
-      (add-watch db :writer (fn [_ _ _ new]
-                              (send-off file-agent (fn [_] (spit-edn-file db-file new)))))
+    (let [app (make-handler is-dev? database (:pub-ch event-handler))]
       #_(when is-dev?
           (inspect/start))
       (assoc component
-             :server
-             (ring.adapter.jetty/run-jetty app ring)
-             :file-agent file-agent
-             :db db)))
+             :server (ring.adapter.jetty/run-jetty app ring))))
   (stop [component]
     #_(when is-dev?
         (inspect/stop))

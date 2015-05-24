@@ -398,60 +398,64 @@
                   (assoc (om/get-state owner)
                          :sets-per-match sets-per-match))))
 
-(defcomponent league-schedule-row [{:keys [round home id away name] :as app} owner opts]
+(defcomponent league-schedule-row [{:keys [round home id away name inactive?] :as app}
+                                   owner opts]
   (init-state [_] {:home-score 0 :away-score 0 :error nil :valid? false})
   (render-state
-   [_ state]
-   (let [leagues (om/observe owner (league-items))
-         league (get leagues (keyword name))]
-     (html
-      [:form
-       {:class "league-form"
-        :on-submit #(do (.preventDefault %)
-                        (try (handle-league-result-submit
-                              % leagues owner opts
-                              (merge state
-                                     {:round round :name name
-                                      :sets-per-match (:sets-per-match league)
-                                      :id id :home home :away away}))
-                             (catch :default e
-                               (inspect e)
-                               (om/set-state! owner [:error] e)))
-                        )}
-       [:.row
-        [:.large-10.colums
-         [:.large-1.columns round]
-         [:.large-4.columns
-          [:.row.collapse.prefix-radius
-           [:.small-8.columns
-            [:span.prefix home]]
-           [:.small-4.columns
-            [:select {:id "moo" :value (:home-score state)
-                      :on-change #(do (handle-change % owner :home-score js/parseInt)
-                                      (set-valid-league-result! league owner))}
-             (for [n (range (inc (:sets-per-match league)))]
-               [:option {:value (str n)} n])]]]]
-         [:.large-1.columns "vs"]
-         [:.large-4.columns
-          [:.row.collapse.prefix-radius
-           [:.small-8.columns
-            [:span.prefix away]]
-           [:.small-4.columns
-            [:select {:id "foo" :value (:away-score state)
-                      :on-change #(do (handle-change % owner :away-score js/parseInt)
-                                      (set-valid-league-result! league owner))}
-             (for [n (range (inc (:sets-per-match league)))]
-               [:option {:value (str n)} n])]]]]
-         [:input {:class "button tiny" :type "submit" :value "Post"
-                  :disabled (not (:valid? state))}]]]
-       (when-let [err (:error state)]
-         (let [msg (condp = (:type (.-data err))
-                     :schema.core/error "Invalid input"
-                     (.-message err))]
-           (go (<! (timeout 5000))
-               (om/set-state! owner :error nil))
-           [:small.error (str "Error: " msg)]))
-       ]))))
+      [_ state]
+    (logm "rendering " home)
+    (let [leagues (om/observe owner (league-items))
+          ;; TODO: check efficiency. could it just observe 1 league?
+          league (get leagues (keyword name))]
+      (html
+       (if-not inactive?
+         [:form
+          {:class "league-form"
+           :on-submit #(do (.preventDefault %)
+                           (try (handle-league-result-submit
+                                 % leagues owner opts
+                                 (merge state
+                                        {:round round :name name
+                                         :sets-per-match (:sets-per-match league)
+                                         :id id :home home :away away}))
+                                (catch :default e
+                                  (inspect e)
+                                  (om/set-state! owner [:error] e)))
+                           )}
+          [:.row
+           [:.large-10.colums
+            [:.large-1.columns round]
+            [:.large-4.columns
+             [:.row.collapse.prefix-radius
+              [:.small-8.columns
+               [:span.prefix home]]
+              [:.small-4.columns
+               [:select {:id "moo" :value (:home-score state)
+                         :on-change #(do (handle-change % owner :home-score js/parseInt)
+                                         (set-valid-league-result! league owner))}
+                (for [n (range (inc (:sets-per-match league)))]
+                  [:option {:value (str n)} n])]]]]
+            [:.large-1.columns "vs"]
+            [:.large-4.columns
+             [:.row.collapse.prefix-radius
+              [:.small-8.columns
+               [:span.prefix away]]
+              [:.small-4.columns
+               [:select {:id "foo" :value (:away-score state)
+                         :on-change #(do (handle-change % owner :away-score js/parseInt)
+                                         (set-valid-league-result! league owner))}
+                (for [n (range (inc (:sets-per-match league)))]
+                  [:option {:value (str n)} n])]]]]
+            [:input {:class "button tiny" :type "submit" :value "Post"
+                     :disabled (not (:valid? state))}]]]
+          (when-let [err (:error state)]
+            (let [msg (condp = (:type (.-data err))
+                        :schema.core/error "Invalid input"
+                        (.-message err))]
+              (go (<! (timeout 5000))
+                  (om/set-state! owner :error nil))
+              [:small.error (str "Error: " msg)]))
+          ])))))
 
 (defn check-leagues-editable
   "Calls editable endpoint, sets state

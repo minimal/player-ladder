@@ -1,18 +1,20 @@
 (ns react-tutorial-om.system
-  (:require [react-tutorial-om.core :as core]
-            [com.stuartsierra.component :as component]
-            [react-tutorial-om.events :as events])
+  (:require [com.stuartsierra.component :as component]
+            [react-tutorial-om
+             [core :as core]
+             [database :as database]
+             [events :as events]])
   (:gen-class))
 
 (defn make-system [{:keys [is-dev? db-file slack-url port]}]
   (component/system-map
    :event-handler (events/->EventHandler slack-url)
+   :database (database/map->new-database {:db-file db-file})
    :webserver (component/using
                (core/new-webserver {:ring {:port (or port 3000) :join? false}
                                     :slack-url slack-url
-                                    :db-file db-file
                                     :is-dev? is-dev?})
-               [:event-handler])))
+               [:event-handler :database])))
 
 (defn -main
   [file & [port slack-url]]
