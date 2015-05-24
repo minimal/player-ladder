@@ -7,24 +7,29 @@
             [slingshot.slingshot :refer [try+]]))
 
 
-(defn post-league-result-to-slack [{:keys [winner loser winner-score loser-score league]}
-                                   slack-url]
+(defn post-to-slack
+  "Post a params map to slack. Returns a channel or nil if noop"
+  [slack-url params]
   (when-not (str/blank? slack-url)
     (async/thread
       (try+
        (client/post slack-url
-                    {:form-params {:text (format "%s wins against %s in league %s: %s - %s"
-                                                 winner loser (name league) winner-score loser-score)}
+                    {:form-params params
                      :content-type :json})
        (catch [:status 403] {:keys [request-time headers body]}
          (println "Slack 403 " request-time headers))
        (catch Object _
          (println (:throwable &throw-context) "unexpected error"))))))
 
+(defn post-league-result-to-slack [{:keys [winner loser winner-score loser-score league]}
+                                   slack-url]
+  (let [params {:text (format "%s wins against %s in league %s: %s - %s"
+                              winner loser (name league) winner-score loser-score)}]
+    (post-to-slack slack-url params)))
+
 (defn setup-slack-loop [channel prefix slack-url]
   (go-loop []
     (when-let [[topic msg] (<! channel)]
-      ;(println prefix ": " topic ": " msg)
       (case topic
         :league-match (post-league-result-to-slack msg slack-url)
         (println "Unknown topic " topic))
