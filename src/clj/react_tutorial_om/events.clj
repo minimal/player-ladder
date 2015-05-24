@@ -7,6 +7,16 @@
             [slingshot.slingshot :refer [try+]]))
 
 
+(defn format-league-bound-players [{:keys [best1 best2 worst1 worst2 league]}]
+  (format (str/join "\n" ["\t\tLeague %s:"
+                          "\t\tTop players:"
+                          "\t\t\t\t1.- %s"
+                          "\t\t\t\t2.- %s"
+                          "\t\tBottom players:"
+                          "\t\t\t\t1.- %s"
+                          "\t\t\t\t2.- %s"])
+          (name league) best1 best2 worst1 worst2))
+
 (defn post-to-slack
   "Post a params map to slack. Returns a channel or nil if noop"
   [slack-url params]
@@ -32,6 +42,7 @@
     (when-let [[topic msg] (<! channel)]
       (case topic
         :league-match (post-league-result-to-slack msg slack-url)
+        ;; :bound-players (post-league-bound-players-to-slack msg slack-url)
         (println "Unknown topic " topic))
       (recur))))
 
