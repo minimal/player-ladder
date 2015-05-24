@@ -50,9 +50,12 @@
 (defn spit-edn-file [file data]
   (spit file (with-out-str (pprint data))))
 
-(defn init!
+(defn- init-db-file!
   [db db-file]
-  (reset! db (load-edn-file db-file)))
+  (let [file-agent (agent nil :error-handler println)]
+    (reset! db (load-edn-file db-file))
+    (add-watch db :writer (fn [_ _ _ new]
+                            (send-off file-agent (fn [_] (spit-edn-file db-file new)))))))
 
 (defprotocol Database
   (get-leagues [db])
@@ -69,10 +72,7 @@
          (if-not db
            (let [db (atom {})]
              (when db-file
-               (let [file-agent (agent nil :error-handler println)]
-                 (init! db db-file)
-                 (add-watch db :writer (fn [_ _ _ new]
-                                         (send-off file-agent (fn [_] (spit-edn-file db-file new)))))))
+               (init-db-file! db db-file))
              (assoc component
                     :db db))
            component))
