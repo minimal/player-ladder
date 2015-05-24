@@ -64,34 +64,33 @@
   (get-ladder-matches [db])
   (save-ladder-match! [db result]))
 
-(s/defrecord AtomDatabase
-    [db-file :- (s/maybe s/Str)
-     db :- (s/maybe clojure.lang.Atom)]
+(defrecord AtomDatabase
+    [db-file db]
   component/Lifecycle
   (start [component]
-         (if-not db
-           (let [db (atom {})]
-             (when db-file
-               (init-db-file! db db-file))
-             (assoc component
-                    :db db))
-           component))
+    (if-not db
+      (let [db (atom {})]
+        (when db-file
+          (init-db-file! db db-file))
+        (assoc component
+               :db db))
+      component))
   (stop [component]
-        ;; TODO: remove-watch
-        (assoc component :db nil))
+    ;; TODO: remove-watch
+    (assoc component :db nil))
   Database
   (get-leagues [_]
-               (:leagues @db))
+    (:leagues @db))
   (save-league-result! [_ result league]
-                       (swap! db (partial update-league-result result league)))
+    (swap! db (partial update-league-result result league)))
   (save-league-schedule-match!
-   [_ match league]
-   (swap! db (fn [a] (update-in a [:leagues league :schedule]
-                                #(conj % match)))))
+    [_ match league]
+    (swap! db (fn [a] (update-in a [:leagues league :schedule]
+                                 #(conj % match)))))
   (get-ladder-matches [_]
-                      (:singles-ladder @db))
+    (:singles-ladder @db))
   (save-ladder-match! [_ result]
-                      (save-ladder-match!* db result)))
+    (save-ladder-match!* db result)))
 
 (s/defschema AtomDatabaseSchema
   {(s/optional-key :db-file) (s/maybe s/Str)
