@@ -145,11 +145,13 @@
   matches for the league and write out to file. Return the resulting
   state. Also post to slack if possible."
   [db league {:keys [winner loser winner-score loser-score] :as result} event-ch]
-  (let [db-snapshot (db/save-league-result! db result league)]
+  (let [db-snapshot (db/save-league-result! db result league)
+        matches (get-in db-snapshot [:leagues league :matches])]
     (if event-ch
-      (go (>! event-ch [:league-match (assoc result
-                                             :league league
-                                             :db-snapshot db-snapshot)]))))
+      (go (>! event-ch [:league-match
+                        (assoc result
+                               :league league
+                               :rankings (ranking/matches->league-ranks matches))]))))
   {:message "ok"})
 
 (defn- handle-get-leagues
