@@ -205,8 +205,12 @@
               first)))
 
 ;; posts to slack on league result
-(expect ['("localhost" {:form-params {:text "foo wins against moo in league a: 3 - 0"}
-                        :content-type :json})]
+(expect (more-of [[host {:keys [form-params] :as params}] :as all]
+                 "localhost" host
+                 map? params
+                 string? (:text form-params)
+                 #"foo" (:text form-params)
+                 #"moo" (:text form-params))
         (let [db (new-db fresh-state)
               event-handler (component/start (->EventHandler "localhost"))]
           (side-effects [client/post]
