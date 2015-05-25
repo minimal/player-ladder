@@ -1,4 +1,4 @@
-(ns react-tutorial-om.schemas
+(ns ladder.schemas
   (:require [clojure.string])
   #?(:cljs (:require [schema.core :as s :refer-macros [defschema]])
      :clj (:require [schema.core :as s :refer [defschema]])))

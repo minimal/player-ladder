@@ -1,4 +1,4 @@
-(ns react-tutorial-om.exp-test
+(ns ladder.exp-test
   (:require [clj-http.client :as client]
             [clj-time
              [coerce :refer [from-date to-timestamp]]
@@ -7,7 +7,7 @@
             [cognitect.transit :as transit]
             [com.stuartsierra.component :as component]
             [expectations :refer :all]
-            [react-tutorial-om
+            [ladder
              [core :refer :all]
              [database :as database]
              [events :refer [->EventHandler]]

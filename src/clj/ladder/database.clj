@@ -1,4 +1,4 @@
-(ns react-tutorial-om.database
+(ns ladder.database
   (:require [clj-time
              [coerce :refer [to-timestamp]]
              [core :as time]]
@@ -6,7 +6,7 @@
              [edn :as edn]
              [pprint :refer [pprint]]]
             [com.stuartsierra.component :as component]
-            [react-tutorial-om.schemas :as sch]
+            [ladder.schemas :as sch]
             [schema.core :as s]))
 
 (s/defn ^:always-validate update-ladder-match

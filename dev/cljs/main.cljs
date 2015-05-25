@@ -1,7 +1,7 @@
-(ns react-tutorial-om.main
-  (:require [react-tutorial-om.app :as app]
+(ns ladder.main
+  (:require [ladder.app :as app]
             [figwheel.client :as fw :include-macros true]
-            [react-tutorial-om.utils :refer [guid] :refer-macros [logm]]
+            [ladder.utils :refer [guid] :refer-macros [logm]]
             ;; [devtools.core :as devtools]
             [weasel.repl :as weasel]))
 

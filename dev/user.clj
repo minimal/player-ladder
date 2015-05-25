@@ -13,8 +13,8 @@
             expectations
             [figwheel-sidecar.auto-builder :as fig-auto]
             [figwheel-sidecar.core :as fig]
-            [react-tutorial-om.core :as core]
-            [react-tutorial-om.system :as system]
+            [ladder.core :as core]
+            [ladder.system :as system]
             [reloaded.repl :refer [system init start stop go reset]]
             [weasel.repl.websocket :as weasel]))
 
@@ -37,7 +37,7 @@
                         :output-dir "resources/public/js/out"
                         :source-map "resources/public/js/out.js.map"
                         :source-map-timestamp true
-                        :main "react-tutorial-om.main"
+                        :main "ladder.main"
                         :asset-path "js/out"
                         :cache-analysis true}}]
    :figwheel-server nil})

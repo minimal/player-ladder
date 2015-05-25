@@ -1,4 +1,4 @@
-(ns react-tutorial-om.utils
+(ns ladder.utils
   (:require [cljs.reader :as reader])
   (:import [goog.ui IdGenerator]))
 

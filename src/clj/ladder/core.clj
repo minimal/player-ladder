@@ -1,4 +1,4 @@
-(ns react-tutorial-om.core
+(ns ladder.core
   (:require [buddy.auth :refer [authenticated? throw-unauthorized]]
             [buddy.auth.backends.session :refer [session-backend]]
             [buddy.auth.middleware :refer [wrap-authentication wrap-authorization]]
@@ -14,7 +14,7 @@
              [routes :refer [api-root]]
              [sweet :refer [context* GET* POST* swagger-docs swagger-ui]]]
             [prone.middleware :as prone]
-            [react-tutorial-om
+            [ladder
              [database :as db]
              [ranking :as ranking]
              [schemas :as sch]]
@@ -267,7 +267,7 @@
       wrap-params
       wrap-session
       (cond-> is-dev? (prone/wrap-exceptions
-                       {:app-namespaces ["react-tutorial-om"]
+                       {:app-namespaces ["ladder"]
                         :skip-prone? (fn [{:keys [headers]}]
                                        (contains? headers "postman-token"))}))
       ;; compojure.api.middleware/api-middleware

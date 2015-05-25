@@ -1,4 +1,4 @@
-(ns react-tutorial-om.utils)
+(ns ladder.utils)
 
 (defmacro logm
   "Log as a macro to give the caller's line number in web console"

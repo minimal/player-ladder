@@ -1,4 +1,4 @@
-(defproject react-tutorial-om "0.1.0-SNAPSHOT"
+(defproject player-ladder "0.1.0-SNAPSHOT"
   :description "FIXME: write this!"
   :url "http://example.com/FIXME"
 
@@ -76,8 +76,8 @@
                               :port 3449
                               :css-dirs ["resources/public/css"]}}
 
-             :uberjar {:aot [react-tutorial-om.system]
-                       :main react-tutorial-om.system
+             :uberjar {:aot [ladder.system]
+                       :main ladder.system
                        :hooks [leiningen.cljsbuild]
                        :env {:production true}
                        :cljsbuild {:builds {:app
@@ -93,7 +93,7 @@
                                         :source-map "resources/public/js/out.js.map"
                                         :externs ["react/externs/react.js"]
                                         :optimizations :none
-                                        :main "react-tutorial-om.main"
+                                        :main "ladder.main"
                                         :cache-analysis true
                                         :pretty-print  true}}}}
 

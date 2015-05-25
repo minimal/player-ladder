@@ -1,4 +1,4 @@
-(ns react-tutorial-om.events
+(ns ladder.events
   (:require [clj-http.client :as client]
             [clojure.core.async :as async]
             [clojure.core.async :refer [<! chan go-loop pub sub]]

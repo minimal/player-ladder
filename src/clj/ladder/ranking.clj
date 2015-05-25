@@ -1,5 +1,5 @@
-(ns react-tutorial-om.ranking
-  (:require [react-tutorial-om.schemas :as sch]
+(ns ladder.ranking
+  (:require [ladder.schemas :as sch]
             [schema.core :as s]))
 
 (def DefaultRank

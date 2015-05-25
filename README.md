@@ -13,7 +13,7 @@ Frontend written in [Om](https://github.com/swannodette/om).
 
 Clone this repo
 
-    git clone git@github.com:minimal/react-tutorial-om.git
+    git clone git@github.com:minimal/player-ladder.git
 
 Run server and figwheel
 
@@ -33,4 +33,4 @@ Point Browser to
 Uberjar
 
     lein uberjar
-    java -jar react-tutorial-om-0.1.0-SNAPSHOT-standalone.jar results.edn
+    java -jar player-ladder-0.1.0-SNAPSHOT-standalone.jar results.edn

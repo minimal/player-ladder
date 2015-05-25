@@ -1,6 +1,6 @@
-(ns react-tutorial-om.system
+(ns ladder.system
   (:require [com.stuartsierra.component :as component]
-            [react-tutorial-om
+            [ladder
              [core :as core]
              [database :as database]
              [events :as events]])

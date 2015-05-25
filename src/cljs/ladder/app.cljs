@@ -1,5 +1,5 @@
 (ns ^:figwheel-load
-  react-tutorial-om.app
+  ladder.app
   (:require-macros [cljs.core.async.macros :refer [go alt! go-loop]])
   (:require [goog.events :as events]
             [cljs.core.async :as async :refer [put! <! >! chan timeout]]
@@ -16,8 +16,8 @@
             ;; [clairvoyant.core :as trace :include-macros true]
             [clojure.string :as str]
             ;; [omdev.core :as omdev]
-            [react-tutorial-om.schemas :as sch :refer [check Nat]]
-            [react-tutorial-om.utils :refer [guid] :refer-macros [logm inspect breakpoint]])
+            [ladder.schemas :as sch :refer [check Nat]]
+            [ladder.utils :refer [guid] :refer-macros [logm inspect breakpoint]])
   (:import [goog History]))
 
 (enable-console-print!)
