@@ -2,7 +2,7 @@
   :description "FIXME: write this!"
   :url "http://example.com/FIXME"
 
-  :source-paths ["src/clj" "src/cljs" "src/cljc" "target/classes"]
+  :source-paths ["src/clj" "target/classes"]
   :dependencies [[clj-time "0.9.0"]
                  [clj-http "1.1.2"]
                  [cljs-http "0.1.30"]
@@ -87,7 +87,7 @@
                                               :pretty-print false}}}}}}
 
   :cljsbuild {:test-commands {"node" ["node" :node-runner "resources/public/js/app.js"]}
-              :builds {:app {:source-paths ["src/cljs" "src/cljc"]
+              :builds {:app {:source-paths ["src/clj"]
                              :compiler {:output-to "resources/public/js/app.js"
                                         :output-dir "resources/public/js/out"
                                         :source-map "resources/public/js/out.js.map"
