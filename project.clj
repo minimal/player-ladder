@@ -10,10 +10,10 @@
                  [compojure "1.3.4"]
                  [buddy/buddy-auth "0.5.3"]
                  [environ "1.0.0"]
-                 [metosin/compojure-api "0.20.4"]
+                 [metosin/compojure-api "0.21.0"]
                  [org.omcljs/om "0.8.8"]
                  [org.clojure/clojure "1.7.0-RC1"]
-                 [org.clojure/clojurescript "0.0-3291" :classifier "aot" :exclusions
+                 [org.clojure/clojurescript "0.0-3297" :classifier "aot" :exclusions
                   [org.clojure/tools.reader org.clojure/data.json]]
                  [org.clojure/tools.reader "0.9.2" :classifier "aot"]
                  [org.clojure/data.json "0.2.6" :classifier "aot"]
