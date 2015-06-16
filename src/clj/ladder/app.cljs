@@ -104,17 +104,15 @@
 
 (defcomponent ladder-match-row
   [{:keys [winner winner-score loser loser-score date]} owner opts]
-  (render
-   [_]
-   (dom/tr {:class "comment"}
-           (map dom/td [winner winner-score loser-score loser]))))
+  (render [_]
+    (dom/tr {:class "comment"}
+            (map dom/td [winner winner-score loser-score loser]))))
 
 (defcomponent ladder-result-list [{:keys [matches]}]
-  (render
-   [_]
-   (html [:table.commentList
-          [:thead [:tr (map #(dom/th %) ["winner" "" "" "loser"])]]
-          [:tbody (om/build-all ladder-match-row (take 20 (reverse matches)))]])))
+  (render [_]
+    (html [:table.commentList
+           [:thead [:tr (map #(dom/th %) ["winner" "" "" "loser"])]]
+           [:tbody (om/build-all ladder-match-row (take 20 (reverse matches)))]])))
 
 (s/defn ^:always-validate save-match!
   "Save Ladder match"
@@ -218,134 +216,128 @@
 
 (defcomponent ladder-form
   [app owner opts]
-  (init-state
-   [_]
-   {:winner "" :winner-score ""
-    :loser "" :loser-score ""})
-  (render-state
-   [this state]
-   (dom/form
-    {:class "commentForm" :onSubmit #(handle-submit % app owner opts state)}
-    (dom/input {:type "text" :placeholder "Winner" :ref "winner"
+  (init-state [_]
+    {:winner "" :winner-score ""
+     :loser "" :loser-score ""})
+  (render-state [this state]
+    (dom/form
+     {:class "commentForm" :onSubmit #(handle-submit % app owner opts state)}
+     (dom/input {:type "text" :placeholder "Winner" :ref "winner"
                  :value (:winner state) :list "players"
                  :onChange #(handle-change % owner :winner)})
-    (dom/input {:type "number"  :placeholder "Score" :ref "winner-score"
+     (dom/input {:type "number"  :placeholder "Score" :ref "winner-score"
                  :value (:winner-score state)
                  :onChange #(handle-change % owner :winner-score)})
-    (dom/input {:type "text" :placeholder "Loser" :ref "loser"
+     (dom/input {:type "text" :placeholder "Loser" :ref "loser"
                  :value (:loser state) :list "players"
                  :onChange #(handle-change % owner :loser)})
-    (dom/input {:type "number" :placeholder "Score" :ref "loser-score"
+     (dom/input {:type "number" :placeholder "Score" :ref "loser-score"
                  :value (:loser-score state)
                  :onChange #(handle-change % owner :loser-score)})
-    (dom/input {:class "button" :type "submit" :value "Post"})
-    (dom/datalist {:id "players"}
+     (dom/input {:class "button" :type "submit" :value "Post"})
+     (dom/datalist {:id "players"}
                    (map #(dom/option {:value %})
                         (:players app))))))
 
 (defcomponent ladder-box [app owner opts]
   (init-state [_] {:mounted true})
   (will-mount [_]
-              (go (while (om/get-state owner :mounted)
-                    (fetch-matches app opts (:conn-ch (om/get-shared owner)))
-                    (<! (timeout (:poll-interval opts))))))
+    (go (while (om/get-state owner :mounted)
+          (fetch-matches app opts (:conn-ch (om/get-shared owner)))
+          (<! (timeout (:poll-interval opts))))))
   (will-unmount [_]
-                (om/set-state! owner :mounted false))
-  (render
-   [_]
-   (dom/div {:class "commentBox"}
-     (dom/h3 "Results (most recent first)")
-     (om/build ladder-form app {:opts opts})
-     (om/build ladder-result-list app))))
+    (om/set-state! owner :mounted false))
+  (render [_]
+    (dom/div {:class "commentBox"}
+      (dom/h3 "Results (most recent first)")
+      (om/build ladder-form app {:opts opts})
+      (om/build ladder-result-list app))))
 
 (defcomponent last-10-games [results owner]
-  (render
-   [_]
-   (html [:ul.last-10-games {:style {:width "130px"}}
-          (for [game (take-last 10 results)]
-            (let [win? (> (:for game) (:against game))]
-              [:li {:class (str (if win? "win" "loss") " hover")}
-               [:span ""]
-               [:.atooltip (str (if win? "Win " "Loss ")
-                                (:for game) " - " (:against game)
-                                " against " (:opposition game)
-                                " @ " (:date game))]]))])))
+  (render [_]
+    (html [:ul.last-10-games {:style {:width "130px"}}
+           (for [game (take-last 10 results)]
+             (let [win? (> (:for game) (:against game))]
+               [:li {:class (str (if win? "win" "loss") " hover")}
+                [:span ""]
+                [:.atooltip (str (if win? "Win " "Loss ")
+                                 (:for game) " - " (:against game)
+                                 " against " (:opposition game)
+                                 " @ " (:date game))]]))])))
 
 (defcomponent player-summary
   [{{:keys [team ranking rd wins loses suggest matches] :as fields} :data
     show :display} owner opts]
-  (render
-   [_]
-   (html [:div {:style (display show)}
-          [:h4 "Player Stats"]
-          [:ul.pricing-table
-           [:li.title team]
-           [:li.price ranking]
-           [:li.bullet-item (str  wins " - " loses)]
-           [:li.bullet-item
-            [:ul (for [[name matches*] (reverse (sort-by (fn [[_ games]] (count games))
-                                                         (group-by :opposition matches)))]
-                   (let [wins (reduce (fn [tot {:keys [for against]}]
-                                        (if (> for against)
-                                          (inc tot)
-                                          tot)) 0 matches*)
-                         losses (- (count matches*) wins)]
-                     [:li
-                      [:.row
-                       [:.small-6.columns
-                        (str name ": " wins "-" losses)
-                        [:.progress.success
-                         [:span.meter {:style {:width (str (Math/round
-                                                            (* 100 (/ wins (+ wins losses)))) "%")}}]]]
-                       [:.small-6.columns
-                        (om/build last-10-games (take-last 5 matches*))]]]))]]]])))
+  (render [_]
+    (html [:div {:style (display show)}
+           [:h4 "Player Stats"]
+           [:ul.pricing-table
+            [:li.title team]
+            [:li.price ranking]
+            [:li.bullet-item (str  wins " - " loses)]
+            [:li.bullet-item
+             [:ul (for [[name matches*] (reverse (sort-by (fn [[_ games]] (count games))
+                                                          (group-by :opposition matches)))]
+                    (let [wins (reduce (fn [tot {:keys [for against]}]
+                                         (if (> for against)
+                                           (inc tot)
+                                           tot)) 0 matches*)
+                          losses (- (count matches*) wins)]
+                      [:li
+                       [:.row
+                        [:.small-6.columns
+                         (str name ": " wins "-" losses)
+                         [:.progress.success
+                          [:span.meter {:style {:width (str (Math/round
+                                                             (* 100 (/ wins (+ wins losses)))) "%")}}]]]
+                        [:.small-6.columns
+                         (om/build last-10-games (take-last 5 matches*))]]]))]]]])))
 
 (defcomponent ranking
   [{:keys [team rank ranking rd wins loses suggest] :as fields} owner opts]
   (render-state [this {:keys [select-player-ch]}]
-                                        ;TODO: should chan ;really be in local state?
-                (dom/tr
-                 (map dom/td
-                      [rank
-                       (dom/span {:onClick (fn [e]
-                                             (.stopPropagation e)
-                                             (put! select-player-ch team))
-                                   :style {:cursor "pointer"}}
-                                  team)
-                       ranking (.toFixed (/ wins loses) 2) suggest
-                       (om/build last-10-games (:matches fields))]))))
+    ;;TODO: should chan ;really be in local state?
+    (dom/tr
+     (map dom/td
+          [rank
+           (dom/span {:onClick (fn [e]
+                                 (.stopPropagation e)
+                                 (put! select-player-ch team))
+                      :style {:cursor "pointer"}}
+                     team)
+           ranking (.toFixed (/ wins loses) 2) suggest
+           (om/build last-10-games (:matches fields))]))))
 
 (defcomponent ranking-list [rankings owner opts]
-  (render
-   [_]
-   (dom/table {:class "rankingTable"}
-              (dom/thead
-               (dom/tr
-                (map dom/th
-                     ["" "team" "ranking" "w/l"
-                      "suggested opponent" "last 10 games"])))
-              (dom/tbody
-               (om/build-all
-                ranking
-                rankings
-                {:init-state {:select-player-ch (:select-player-ch opts)}})))))
+  (render [_]
+    (dom/table {:class "rankingTable"}
+               (dom/thead
+                (dom/tr
+                 (map dom/th
+                      ["" "team" "ranking" "w/l"
+                       "suggested opponent" "last 10 games"])))
+               (dom/tbody
+                (om/build-all
+                 ranking
+                 rankings
+                 {:init-state {:select-player-ch (:select-player-ch opts)}})))))
 
 
 (defcomponent rankings-box [app owner opts]
   (init-state [_]
-              {:mounted true})
+    {:mounted true})
   (will-mount [_]
-              (prn "will mount")
-              (go (while (om/get-state owner :mounted)
-                    (fetch-rankings app opts (:conn-ch (om/get-shared owner)))
-                    (<! (timeout (:poll-interval opts))))))
+    (prn "will mount")
+    (go (while (om/get-state owner :mounted)
+          (fetch-rankings app opts (:conn-ch (om/get-shared owner)))
+          (<! (timeout (:poll-interval opts))))))
   (will-unmount [_]
-                (logm "unmounting!!!!!")
-                (om/set-state! owner :mounted false))
+    (logm "unmounting!!!!!")
+    (om/set-state! owner :mounted false))
   (render [_]
-          (dom/div {:class "rankingsBox"}
-            (dom/h3 "Rankings")
-            (om/build ranking-list (:rankings app) {:opts opts}))))
+    (dom/div {:class "rankingsBox"}
+      (dom/h3 "Rankings")
+      (om/build ranking-list (:rankings app) {:opts opts}))))
 
 (defn position-class [bands rank]
   (if bands
@@ -364,31 +356,30 @@
 (defcomponent league-row [{:keys [team wins loses points matches for against diff
                                   rank change league-name bands] :as data} ;;:- (schema/cursor LeagueRanking)
                           owner opts]
-  (render
-   [_]
-   (html [:tr {:class (position-class bands rank)}
-          [:td rank]
-          [:td {:style {:color (case change
-                                 :+ "#2c7e00"
-                                 :- "#a8160c"
-                                 "")}}
-           (case change
-             :+ "▲"
-             :- "▼"
-             "")]
-          [:td [:a {:href (str "#/leagues/" league-name "/team/" team)
-                    :on-click #(some-> js/document
-                                       (.getElementById "league-summary")
-                                       .scrollIntoView )}
-                team]]
-          [:td (+ wins loses)]
-          [:td wins]
-          [:td loses]
-          [:td for]
-          [:td against]
-          [:td diff]
-          [:td {:style {:color "darkgreen"}} points]
-          [:td (om/build last-10-games matches)]])))
+  (render [_]
+    (html [:tr {:class (position-class bands rank)}
+           [:td rank]
+           [:td {:style {:color (case change
+                                  :+ "#2c7e00"
+                                  :- "#a8160c"
+                                  "")}}
+            (case change
+              :+ "▲"
+              :- "▼"
+              "")]
+           [:td [:a {:href (str "#/leagues/" league-name "/team/" team)
+                     :on-click #(some-> js/document
+                                        (.getElementById "league-summary")
+                                        .scrollIntoView )}
+                 team]]
+           [:td (+ wins loses)]
+           [:td wins]
+           [:td loses]
+           [:td for]
+           [:td against]
+           [:td diff]
+           [:td {:style {:color "darkgreen"}} points]
+           [:td (om/build last-10-games matches)]])))
 
 (defn- set-valid-league-result!
   "If scores are valid set valid? flag in local state"
@@ -401,8 +392,7 @@
 (defcomponent league-schedule-row [{:keys [round home id away name inactive?] :as app}
                                    owner opts]
   (init-state [_] {:home-score 0 :away-score 0 :error nil :valid? false})
-  (render-state
-      [_ state]
+  (render-state [_ state]
     (logm "rendering " home)
     (let [leagues (om/observe owner (league-items))
           ;; TODO: check efficiency. could it just observe 1 league?
@@ -542,101 +532,94 @@
     ))
 
 (defcomponent league-schedule [{:keys [name schedule] :as data} owner opts]
-  (render
-   [_]
-   (html
-    [:div
-     [:h4.subheader "Schedule"]
-     (for [row schedule]
-       (om/build league-schedule-row (assoc row :name name) {:react-key (guid)}))
-     (om/build league-schedule-edit data)])))
+  (render [_]
+    (html
+     [:div
+      [:h4.subheader "Schedule"]
+      (for [row schedule]
+        (om/build league-schedule-row (assoc row :name name) {:react-key (guid)}))
+      (om/build league-schedule-edit data)])))
 
 (defcomponent league-list [league owner opts]
-  (init-state
-   [_]
-   {:mounted false})
-  (render
-   [_]
-   ;; (inspect league)
-   (html
-    [:div
-     [:h3 (:name league)]
-     (if-let [src (:img league)]
-       [:img {:src src :style {:height "150px"}}])
-     [:table.rankingTable
-      [:thead
-       (for [header ["" "" "" "P" "W" "L" "F" "A" "Diff" "Pts" "Last 10 Games"]]
-         [:th header])]
-      [:tbody
-       (om/build-all league-row (mapv #(assoc %
-                                              :league-name (:name league)
-                                              :bands (:bands league))
-                                      (:rankings league)
-                                      )
-                     {:key :team})]]
-     (om/build league-schedule (select-keys league [:schedule :name :players]))])))
+  (init-state [_]
+    {:mounted false})
+  (render [_]
+    ;; (inspect league)
+    (html
+     [:div
+      [:h3 (:name league)]
+      (if-let [src (:img league)]
+        [:img {:src src :style {:height "150px"}}])
+      [:table.rankingTable
+       [:thead
+        (for [header ["" "" "" "P" "W" "L" "F" "A" "Diff" "Pts" "Last 10 Games"]]
+          [:th header])]
+       [:tbody
+        (om/build-all league-row (mapv #(assoc %
+                                               :league-name (:name league)
+                                               :bands (:bands league))
+                                       (:rankings league)
+                                       )
+                      {:key :team})]]
+      (om/build league-schedule (select-keys league [:schedule :name :players]))])))
 
 (defcomponent status-box [conn? owner]
   (render [_]
-          (html [:.alert-box.warning.radius {:style (display (not conn?))}
-                 "Connection problem!"])))
+    (html [:.alert-box.warning.radius {:style (display (not conn?))}
+           "Connection problem!"])))
 
 (defcomponent navigation-view [app _]
-  (render
-   [_]
-   (let [style {:style {:margin "10px;"}}]
-     (dom/div style
-       (om/build status-box (:conn? app))
-       (dom/a (assoc style :href "#/")
+  (render [_]
+    (let [style {:style {:margin "10px;"}}]
+      (dom/div style
+        (om/build status-box (:conn? app))
+        (dom/a (assoc style :href "#/")
                "Ladder")
-       (dom/a (assoc style :href "#/leagues")
+        (dom/a (assoc style :href "#/leagues")
                "Leagues")
-       (dom/a (assoc style :href "#/about")
+        (dom/a (assoc style :href "#/about")
                "About")))))
 
 
 (defcomponent ladder-app [app owner]
   (init-state [_] {:select-player-ch (chan)})
-  (will-mount
-   [_]
-   (let [select-player-ch (om/get-state owner :select-player-ch)]
-     (go (loop []
-           (when-let [player (<! select-player-ch)]
-             (om/transact!
-              app :player-view
-              #(-> %
-                   ((fn [x]
-                      (if (= (:player x)
-                             player)  ;; toggle same player
-                        (assoc x :display (not (:display x)))
-                        (assoc x :display true))))
-                   (assoc :player player)))
-             (recur))))))
-  (will-unmount
-   [_]
-   (async/close! (om/get-state owner :select-player-ch)))
-  (render-state
-   [this {:keys [select-player-ch]}]
-   (dom/div {:class "row"}
-     (dom/div {:class "large-2 columns"
+  (will-mount [_]
+    (let [select-player-ch (om/get-state owner :select-player-ch)]
+      (go (loop []
+            (when-let [player (<! select-player-ch)]
+              (om/transact!
+               app :player-view
+               #(-> %
+                    ((fn [x]
+                       (if (= (:player x)
+                              player)  ;; toggle same player
+                         (assoc x :display (not (:display x)))
+                         (assoc x :display true))))
+                    (assoc :player player)))
+              (recur))))))
+  (will-unmount [_]
+    (async/close! (om/get-state owner :select-player-ch)))
+  (render-state [this {:keys [select-player-ch]}]
+    (dom/div {:class "row"}
+      (dom/div {:class "large-2 columns"
                 :dangerouslySetInnerHTML {:__html "&nbsp;"}})
-     (dom/div {:class "large-7 columns"}
+      (dom/div {:class "large-7 columns"}
 
-       (om/build rankings-box app
-                 {:opts {:poll-interval 2000
-                         :url "/rankings"
-                         :select-player-ch select-player-ch}})
-       (om/build ladder-box app
-                 {:opts {:poll-interval 2000
-                         :url "/matches"}}))
-     (dom/div {:class "large-3 columns"}
-       (om/build
-        player-summary
-        {:data  (first
-                 (filter #(= (:team %)
-                             (get-in app [:player-view :player]))
-                         (:rankings app)))
-         :display (get-in app [:player-view :display])})))))
+        (om/build rankings-box app
+                  {:opts {:poll-interval 2000
+                          :url "/rankings"
+                          :select-player-ch select-player-ch}})
+        (om/build ladder-box app
+                  {:opts {:poll-interval 2000
+                          :url "/matches"}}))
+      (dom/div {:class "large-3 columns"}
+        (om/build
+         player-summary
+         {:data  (first
+                  (filter #(= (:team %)
+                              (get-in app [:player-view :player]))
+                          (:rankings app)))
+          :display (get-in app [:player-view :display])})))))
 
 (defn filter-schedule [team]
   (filter #(or (= (:home %) team)
@@ -673,102 +656,93 @@
                 [:p (str  opp ". Rd: " (:round game))])]]]])))
 
 (defcomponent leagues-page-view [{:keys [leagues path] :as data} owner opts]
-  (render
-   [_]
-   (dom/div {:class "row results-row"}
-     (dom/div {:class "large-2 columns"
-               :dangerouslySetInnerHTML {:__html "&nbsp;"}})
-     (dom/div {:class "large-7 columns"}
-       (dom/h3 "Leagues")
-       (dom/ul (for [[league _] leagues]
-                 (dom/li {:key (name league)}
-                         (dom/a {:href (str "#/leagues/" (name league))}
-                                (name league)))))
-       (if (seq path)
-         (dom/div {:style (display (seq path))}
-           (om/build league-list (leagues (keyword (first path)))))))
-     (dom/div {:class "large-3 columns"}
-       (match (om/value path)
-         [league [:team team]]
-         (if-let [team-row (->> (get-in leagues [(keyword league) :rankings])
-                                (filter #(= team (:team %)))
-                                first )]
-           (om/build league-team-summary
-                     (assoc team-row
-                            :schedule (get-in leagues [(keyword league) :schedule]))))
-         :else nil)
-       )))
+  (render [_]
+    (dom/div {:class "row results-row"}
+      (dom/div {:class "large-2 columns"
+                :dangerouslySetInnerHTML {:__html "&nbsp;"}})
+      (dom/div {:class "large-7 columns"}
+        (dom/h3 "Leagues")
+        (dom/ul (for [[league _] leagues]
+                  (dom/li {:key (name league)}
+                          (dom/a {:href (str "#/leagues/" (name league))}
+                                 (name league)))))
+        (if (seq path)
+          (dom/div {:style (display (seq path))}
+            (om/build league-list (leagues (keyword (first path)))))))
+      (dom/div {:class "large-3 columns"}
+        (match (om/value path)
+          [league [:team team]]
+          (if-let [team-row (->> (get-in leagues [(keyword league) :rankings])
+                                 (filter #(= team (:team %)))
+                                 first )]
+            (om/build league-team-summary
+                      (assoc team-row
+                             :schedule (get-in leagues [(keyword league) :schedule]))))
+          :else nil)
+        )))
 
-  (init-state
-   [_]
-   {:mounted true})
-  (will-mount
-   [_]
-   (prn "will mount leagues")
-   (inspect opts)
-   (go (while (om/get-state owner :mounted)
-         ;; (logm :polling)
-         (fetch-leagues leagues opts (:conn-ch (om/get-shared owner)))
-         (<! (timeout (or  (:poll-interval opts) 5000))))))
-  (will-unmount
-   [_]
-   (om/set-state! owner :mounted false)))
+  (init-state [_]
+    {:mounted true})
+  (will-mount [_]
+    (prn "will mount leagues")
+    (inspect opts)
+    (go (while (om/get-state owner :mounted)
+          ;; (logm :polling)
+          (fetch-leagues leagues opts (:conn-ch (om/get-shared owner)))
+          (<! (timeout (or  (:poll-interval opts) 5000))))))
+  (will-unmount [_]
+    (om/set-state! owner :mounted false)))
 
 (defcomponent about-page-view [_ owner]
-  (render
-   [_]
-   (dom/div {:class "row results-row"}
-     (dom/div {:class "large-2 columns"
-               :dangerouslySetInnerHTML #js {:__html "&nbsp;"}})
-     (dom/div {:class "large-7 columns"}
-       (dom/div (dom/a {:href "https://github.com/minimal/player-ladder"}
-                       "Fork me on Github")))
-     (dom/div {:class "large-3 columns" :dangerouslySetInnerHTML {:__html "&nbsp;"}}))))
+  (render [_]
+    (dom/div {:class "row results-row"}
+      (dom/div {:class "large-2 columns"
+                :dangerouslySetInnerHTML #js {:__html "&nbsp;"}})
+      (dom/div {:class "large-7 columns"}
+        (dom/div (dom/a {:href "https://github.com/minimal/player-ladder"}
+                        "Fork me on Github")))
+      (dom/div {:class "large-3 columns" :dangerouslySetInnerHTML {:__html "&nbsp;"}}))))
 
 (defcomponent top-level [{:keys [view path] :as app} owner]
-  (render
-   [this]
-   (dom/div
-       (dom/div {:class "row results-row"} ;; top bar
-         (dom/div {:class "large-2 columns"
+  (render [this]
+    (dom/div
+        (dom/div {:class "row results-row"} ;; top bar
+          (dom/div {:class "large-2 columns"
                     :dangerouslySetInnerHTML {:__html "&nbsp;"}})
-         (dom/div {:class "large-7 columns"}
-           (om/build navigation-view (select-keys app [:conn?])))
-         (dom/div {:class "large-3 columns"
+          (dom/div {:class "large-7 columns"}
+            (om/build navigation-view (select-keys app [:conn?])))
+          (dom/div {:class "large-3 columns"
                     :dangerouslySetInnerHTML {:__html "&nbsp;"}}))
-     (case view
-       :leagues (om/build leagues-page-view app)
-       :ladder (om/build ladder-app app)
-       :about (om/build about-page-view app)
-       (do (inspect "unknown path " view)
-           (om/build ladder-app app)))))
+      (case view
+        :leagues (om/build leagues-page-view app)
+        :ladder (om/build ladder-app app)
+        :about (om/build about-page-view app)
+        (do (inspect "unknown path " view)
+            (om/build ladder-app app)))))
 
-  (init-state
-   [_]
-   {:mounted true})
-  (will-unmount
-   [_]
-   (om/set-state! owner :mounted false))
-  (will-mount
-   [_]
-   (logm "starting top-level")
-   (go-loop []
-     (when-let [msg (and (om/get-state owner :mounted)
-                         (<! (:conn-ch (om/get-shared owner))))]
-       (when (= :error msg)
-         (om/transact! app #(assoc % :conn? false))
-         (<! (timeout 5000))
-         (om/transact! app #(assoc % :conn? true)))
-       (recur)))
-   (go (loop []
-         (when-let [[view' path'] (and (om/get-state owner :mounted)
-                                       (<! nav-ch))]
-           (inspect view')
-           (inspect path')
-           (om/transact! app #(assoc %
-                                     :view view'
-                                     :path path'))
-           (recur))))))
+  (init-state [_]
+    {:mounted true})
+  (will-unmount [_]
+    (om/set-state! owner :mounted false))
+  (will-mount [_]
+    (logm "starting top-level")
+    (go-loop []
+      (when-let [msg (and (om/get-state owner :mounted)
+                          (<! (:conn-ch (om/get-shared owner))))]
+        (when (= :error msg)
+          (om/transact! app #(assoc % :conn? false))
+          (<! (timeout 5000))
+          (om/transact! app #(assoc % :conn? true)))
+        (recur)))
+    (go (loop []
+          (when-let [[view' path'] (and (om/get-state owner :mounted)
+                                        (<! nav-ch))]
+            (inspect view')
+            (inspect path')
+            (om/transact! app #(assoc %
+                                      :view view'
+                                      :path path'))
+            (recur))))))
 
 (defn run-top-level []
   (om/root top-level
