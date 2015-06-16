@@ -158,7 +158,8 @@
   [db]
   (into {} (for [[l {:keys [matches schedule name players img
                             sets-per-match bands]}] (db/get-leagues db)]
-             [l {:rankings (ranking/matches->league-ranks matches)
+             [l {:rankings (->> (ranking/matches->league-ranks matches)
+                                (map #(assoc % :meta (db/get-player db (:team %)))))
                  :schedule (sort-by :round schedule)
                  :img img
                  :sets-per-match (or sets-per-match 3)

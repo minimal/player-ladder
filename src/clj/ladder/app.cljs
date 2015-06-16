@@ -644,33 +644,33 @@
 
 (defcomponent league-team-summary [{:keys [rank against points matches
                                            for team change loses wins diff
+                                           meta
                                            schedule] :as data}
                                    owner opts]
   (did-mount [_] (.scrollIntoView (om/get-node owner)))
-  (render
-   [_]
-   (html [:div#league-summary
-          [:h4 "Player Stats"]
-          [:ul.pricing-table
-           [:li.title team]
-           [:li.price rank]
-           [:li.bullet-item (str  wins " - " loses)]
-           [:li.bullet-item (str "Last match: " (let [game (last matches)]
-                                                  (str (:for game) " - " (:against game)
-                                                       " against " (:opposition game)
-                                                       " @ " (:date game))))]
-           [:li.bullet-item (str "Average sets per match: "
-                                 (.toFixed (/ (transduce (map :for) + matches)
-                                              (count matches))
-                                           2))]
-           [:li.bullet-item
-            [:div
-             [:p "Next games: "]
-             (for [game (sequence (comp (filter-schedule team) (take 2)) schedule)
-                   :let [opp (some #(if (not= team %) %)
-                                   ((juxt :home :away) game))]]
-               [:p (str  opp ". Rd: " (:round game))])]]]]
-         )))
+  (render [_]
+    (html [:div#league-summary
+           [:h4 "Player Stats"]
+           [:ul.pricing-table
+            [:li.title (if-let [name (:name meta)] name team)]
+            (if-let [img (:img meta)] [:img {:src img}])
+            [:li.price rank]
+            [:li.bullet-item (str  wins " - " loses)]
+            [:li.bullet-item (str "Last match: " (let [game (last matches)]
+                                                   (str (:for game) " - " (:against game)
+                                                        " against " (:opposition game)
+                                                        " @ " (:date game))))]
+            [:li.bullet-item (str "Average sets per match: "
+                                  (.toFixed (/ (transduce (map :for) + matches)
+                                               (count matches))
+                                            2))]
+            [:li.bullet-item
+             [:div
+              [:p "Next games: "]
+              (for [game (sequence (comp (filter-schedule team) (take 2)) schedule)
+                    :let [opp (some #(if (not= team %) %)
+                                    ((juxt :home :away) game))]]
+                [:p (str  opp ". Rd: " (:round game))])]]]])))
 
 (defcomponent leagues-page-view [{:keys [leagues path] :as data} owner opts]
   (render

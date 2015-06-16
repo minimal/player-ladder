@@ -58,14 +58,14 @@
                             (send-off file-agent (fn [_] (spit-edn-file db-file new)))))))
 
 (defprotocol Database
+  (get-player [db player])
   (get-leagues [db])
   (save-league-result! [db result league])
   (save-league-schedule-match! [db match league])
   (get-ladder-matches [db])
   (save-ladder-match! [db result]))
 
-(defrecord AtomDatabase
-    [db-file db]
+(defrecord AtomDatabase [db-file db]
   component/Lifecycle
   (start [component]
     (if-not db
@@ -79,6 +79,8 @@
     ;; TODO: remove-watch
     (assoc component :db nil))
   Database
+  (get-player [_ player]
+    (get-in @db [:players player]))
   (get-leagues [_]
     (:leagues @db))
   (save-league-result! [_ result league]

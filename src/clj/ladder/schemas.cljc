@@ -12,6 +12,10 @@
 (defschema NEmptyStr
   (s/pred #(not (clojure.string/blank? %)) "Non blank string"))
 
+(defschema Player
+  {:name s/Str
+   (s/optional-key :img) s/Str})
+
 (defschema Result
   "Result is a map of winner/loser names and scores"
   (s/both {:winner s/Str
@@ -62,7 +66,7 @@
 
 (defschema RankingsResponse
   {:message s/Str
-   :players (s/either [] #{s/Str})
+   :players #{s/Str}
    :rankings [Ranking]})
 
 (defschema LeagueRanking
@@ -72,6 +76,7 @@
    (s/optional-key :round) (s/maybe s/Int)
    (s/optional-key :rank) Nat
    (s/optional-key :change) (s/maybe (s/enum :+ :-))
+   (s/optional-key :meta) (s/maybe Player)
    :team s/Str
    :draw Nat
    :loses Nat
@@ -110,7 +115,8 @@
    (defschema AllResults
      "Results as stored in edn file"
      {:singles-ladder           [Result]
-      (s/optional-key :leagues) LeagueStorage}))
+      (s/optional-key :leagues) LeagueStorage
+      (s/optional-key :players) {s/Str Player}}))
 
 (defn check []
  #?(:clj :clojure
