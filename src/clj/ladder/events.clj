@@ -21,6 +21,10 @@
           (:rank worst1) (:team worst1)
           (:rank worst2) (:team worst2)))
 
+(defn format-player-position [rankings player]
+  (let [{:keys [rank points]} (first (filter #(= player (:team %)) rankings))]
+    (format "%s is ranked %s with %s points" player rank points)))
+
 (defn post-to-slack
   "Post a params map to slack. Returns a channel or nil if noop"
   [slack-url params]
@@ -40,11 +44,13 @@
                                    slack-url]
   (let [match-text (format "%s wins against %s in league %s: %s - %s"
                            winner loser (name league) winner-score loser-score)
+        winner-text (format-player-position rankings winner)
+        loser-text (format-player-position rankings loser)
         bound-text (format-league-bound-players (map #(select-keys % [:team :rank]) rankings)
                                                 (map #(select-keys % [:team :rank]) (take-last 2 rankings))
                                                 league)
         league-url (str "http://loris:3000/app#/leagues/" (name league))
-        params {:text (str/join "\n\n" [match-text bound-text league-url])}]
+        params {:text (str/join "\n\n" [match-text bound-text winner-text loser-text league-url])}]
     (post-to-slack slack-url params)))
 
 (defn setup-slack-loop [channel prefix slack-url]
