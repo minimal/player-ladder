@@ -43,7 +43,8 @@
         bound-text (format-league-bound-players (map #(select-keys % [:team :rank]) rankings)
                                                 (map #(select-keys % [:team :rank]) (take-last 2 rankings))
                                                 league)
-        params {:text (str/join "\n\n" [match-text bound-text])}]
+        league-url (str "http://loris:3000/app#/leagues/" (name league))
+        params {:text (str/join "\n\n" [match-text bound-text league-url])}]
     (post-to-slack slack-url params)))
 
 (defn setup-slack-loop [channel prefix slack-url]
