@@ -3,17 +3,18 @@
   :url "http://example.com/FIXME"
 
   :source-paths ["src/clj" "target/classes"]
-  :dependencies [[clj-time "0.9.0"]
-                 [clj-http "1.1.2"]
-                 [cljs-http "0.1.35"]
+  :dependencies [[clj-time "0.10.0"]
+                 [clj-http "2.0.0"]
+                 [cljs-http "0.1.36"]
+                 [potemkin "0.4.1"]
                  [com.stuartsierra/component "0.2.3"]
-                 [compojure "1.3.4"]
+                 [compojure "1.4.0"]
                  [buddy/buddy-auth "0.5.3"]
                  [environ "1.0.0"]
                  [metosin/compojure-api "0.21.0"]
                  [org.omcljs/om "0.8.8"]
-                 [org.clojure/clojure "1.7.0-RC1"]
-                 [org.clojure/clojurescript "0.0-3308" :classifier "aot" :exclusions
+                 [org.clojure/clojure "1.7.0"]
+                 [org.clojure/clojurescript "1.7.58" :classifier "aot" :exclusions
                   [org.clojure/tools.reader org.clojure/data.json]]
                  [org.clojure/tools.reader "0.9.2" :classifier "aot"]
                  [org.clojure/data.json "0.2.6" :classifier "aot"]
@@ -21,11 +22,11 @@
                  [prismatic/om-tools "0.3.11"]
                  [prismatic/schema "0.4.3"]
                  [prone "0.8.2"]
-                 [ring "1.3.2"]
+                 [ring "1.4.0"]
                  [metosin/ring-middleware-format "0.6.0"]
-                 [ring/ring-core "1.3.2"]
+                 [ring/ring-core "1.4.0"]
                  [ring/ring-defaults "0.1.5"]
-                 [sablono "0.3.4"]
+                 [sablono "0.3.5"]
                  [secretary "1.2.3"]
                  [slingshot "0.12.2"]
                  [log4j "1.2.17" :exclusions [javax.mail/mail
@@ -60,15 +61,15 @@
   :profiles {:dev {:dependencies [[javax.servlet/servlet-api "2.5"]
                                   [expectations "2.0.16"]
                                   [weasel "0.7.0" :exclusions [org.clojure/clojurescript]]
-                                  [figwheel-sidecar "0.3.3"
+                                  [figwheel-sidecar "0.3.7"
                                    :exclusions [org.clojure/clojurescript]]
-                                  [figwheel "0.3.3"
+                                  [figwheel "0.3.7"
                                    :exclusions [org.clojure/clojurescript]]
                                   [com.cemerick/piggieback "0.2.2-SNAPSHOT"
                                    :exclusions [org.clojure/clojurescript]]
                                   ;; [omdev "0.1.3-SNAPSHOT"]
                                   [spellhouse/clairvoyant "0.1.0-SNAPSHOT"]
-                                  [org.clojure/tools.namespace "0.2.10"]
+                                  [org.clojure/tools.namespace "0.2.11"]
                                   [org.clojure/tools.nrepl "0.2.10"]
                                   [reloaded.repl "0.1.0"]
                                   [ring-mock "0.1.5"]]
