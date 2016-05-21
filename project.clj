@@ -83,6 +83,7 @@
                                             {:source-paths ["src/prod/cljs"]
                                              :compiler
                                              {:optimizations :advanced
+                                              :source-map "resources/public/js/out.js.map"
                                               :pretty-print false}}}}}}
 
   :cljsbuild {:test-commands {"node" ["node" :node-runner "resources/public/js/app.js"]}
