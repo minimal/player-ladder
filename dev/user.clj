@@ -15,7 +15,7 @@
             [ladder.system :as system]
             [reloaded.repl :refer [system init start stop go reset]]))
 
-(reloaded.repl/set-init! #(system/make-system {:is-dev? true :db-file #_"example.edn" "results.loris.edn"}))
+(reloaded.repl/set-init! #(system/make-system {:is-dev? true :db-file "results.edn"}))
 
 (comment (defn file-exists? [path]
            (.exists (io/file path))))
@@ -31,22 +31,3 @@
   (reset)
   (mark-tests-as-unrun)
   (expectations/run-all-tests))
-
-(comment
-  (in-ns 'clojure.core)
-
-                                        ; from 1242c48
-  (defn- print-object [o, ^Writer w]
-    (when (instance? clojure.lang.IMeta o)
-      (print-meta o w))
-    (.write w "#<")
-    (let [name (.getSimpleName (class o))]
-      (when (seq name) ;; anonymous classes have a simple name of ""
-        (.write w name)
-        (.write w " ")))
-    (.write w (str o))
-    (.write w ">"))
-
-  (defmethod print-method Throwable [^Throwable o ^Writer w]
-    (print-object o w))
-  (in-ns 'user))
