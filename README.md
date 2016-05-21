@@ -15,21 +15,19 @@ Clone this repo
 
     git clone git@github.com:minimal/player-ladder.git
 
-Run server and figwheel
+Run server
 
     lein repl
     (go)
-    (start-figwheel)
-    
-Browser repl
 
-    lein repl :connect
-    (browser-repl)
+Figwheel and browser repl
+
+    lein figwheel
 
 Point Browser to
 
     http://localhost:3000/app
-    
+
 Uberjar
 
     lein uberjar

@@ -11,47 +11,14 @@
             [clojure.test :as test]
             [clojure.tools.namespace.repl :refer [refresh refresh-all]]
             expectations
-            [figwheel-sidecar.auto-builder :as fig-auto]
-            [figwheel-sidecar.core :as fig]
             [ladder.core :as core]
             [ladder.system :as system]
-            [reloaded.repl :refer [system init start stop go reset]]
-            [weasel.repl.websocket :as weasel]))
+            [reloaded.repl :refer [system init start stop go reset]]))
 
-(reloaded.repl/set-init! #(system/make-system {:is-dev? true :db-file "results.edn"}))
-
-(defn browser-repl []
-  (let [repl-env (weasel/repl-env :ip "0.0.0.0" :port 9001)]
-    (piggieback/cljs-repl repl-env)))
-
-(defonce fig-server (atom nil))
-(defonce fig-builder (atom nil))
-(defonce fig-config (atom nil))
+(reloaded.repl/set-init! #(system/make-system {:is-dev? true :db-file #_"example.edn" "results.loris.edn"}))
 
 (comment (defn file-exists? [path]
            (.exists (io/file path))))
-
-(def base-fig-config
-  {:builds [{:source-paths ["dev/cljs" "src/cljs" "src/cljc"]
-             :compiler {:output-to "resources/public/js/app.js"
-                        :output-dir "resources/public/js/out"
-                        :source-map "resources/public/js/out.js.map"
-                        :source-map-timestamp true
-                        :main "ladder.main"
-                        :asset-path "js/out"
-                        :cache-analysis true}}]
-   :figwheel-server nil})
-
-(defn start-figwheel []
-  (let [server (fig/start-server {:css-dirs ["resources/public/css"]})
-        config (assoc base-fig-config :figwheel-server server)
-        builder (fig-auto/autobuild* config)]
-    (reset! fig-config config)
-    (reset! fig-server server)
-    (reset! fig-builder builder)))
-
-(defn stop-auto-build! []
-  (auto/stop-autobuild! @fig-builder))
 
 (defn- mark-tests-as-unrun []
   (let [all (->> (all-ns)
@@ -64,3 +31,22 @@
   (reset)
   (mark-tests-as-unrun)
   (expectations/run-all-tests))
+
+(comment
+  (in-ns 'clojure.core)
+
+                                        ; from 1242c48
+  (defn- print-object [o, ^Writer w]
+    (when (instance? clojure.lang.IMeta o)
+      (print-meta o w))
+    (.write w "#<")
+    (let [name (.getSimpleName (class o))]
+      (when (seq name) ;; anonymous classes have a simple name of ""
+        (.write w name)
+        (.write w " ")))
+    (.write w (str o))
+    (.write w ">"))
+
+  (defmethod print-method Throwable [^Throwable o ^Writer w]
+    (print-object o w))
+  (in-ns 'user))
