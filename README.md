@@ -32,3 +32,5 @@ Uberjar
 
     lein uberjar
     java -jar player-ladder-0.1.0-SNAPSHOT-standalone.jar results.edn 3000
+
+![screenshot](http://i.imgur.com/Zp7UO20.png "Screenshot")
