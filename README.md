@@ -31,4 +31,4 @@ Point Browser to
 Uberjar
 
     lein uberjar
-    java -jar player-ladder-0.1.0-SNAPSHOT-standalone.jar results.edn
+    java -jar player-ladder-0.1.0-SNAPSHOT-standalone.jar results.edn 3000
